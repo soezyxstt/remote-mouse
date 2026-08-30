@@ -1,0 +1,15 @@
+{
+  "name": "remote-mouse-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:pwa": "pnpm --filter @remote/pwa dev",
+    "dev:desktop": "pnpm --filter @remote/desktop dev",
+    "build": "pnpm --recursive run build",
+    "typecheck": "pnpm --recursive run typecheck",
+    "test": "pnpm --recursive run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/remote-protocol",
+    "crates/remote-core",
+    "crates/platform-windows",
+    "crates/platform-mock",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Adi Haditya Nursyam"]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.38", features = ["full"] }
+tokio-tungstenite = "0.23"
+futures-util = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.8", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+async-trait = "0.1"
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+aes-gcm = "0.10"
+hkdf = "0.12"
+p256 = { version = "0.13", features = ["ecdh", "pkcs8"] }
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+remote-protocol = { path = "crates/remote-protocol" }
+remote-core = { path = "crates/remote-core" }
+platform-mock = { path = "crates/platform-mock" }
