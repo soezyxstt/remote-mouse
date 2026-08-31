@@ -10,10 +10,12 @@
     "dev:pwa": "npm run dev --workspace=@remote/pwa",
     "dev:desktop": "npm run dev --workspace=@remote/desktop",
     "build": "npm run build --workspaces --if-present",
+    "deploy:pwa": "wrangler pages deploy apps/pwa/dist --project-name=remote-mouse-pwa",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "wrangler": "^4.127.1"
   }
 }
