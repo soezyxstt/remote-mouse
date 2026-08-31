@@ -6,6 +6,7 @@ use remote_protocol::*;
 use tracing::{error, info};
 use windows::Win32::Foundation::*;
 use windows::Win32::System::Power::SetSuspendState;
+use windows::Win32::System::Shutdown::*;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -142,7 +143,7 @@ impl InputProvider for WindowsNativeProvider {
                     mi: MOUSEINPUT {
                         dx: 0,
                         dy: 0,
-                        mouseData: (dy * 120.0) as i32,
+                        mouseData: (dy * 120.0) as i32 as u32,
                         dwFlags: MOUSEEVENTF_WHEEL,
                         time: 0,
                         dwExtraInfo: 0,
@@ -157,7 +158,7 @@ impl InputProvider for WindowsNativeProvider {
                     mi: MOUSEINPUT {
                         dx: 0,
                         dy: 0,
-                        mouseData: (dx * 120.0) as i32,
+                        mouseData: (dx * 120.0) as i32 as u32,
                         dwFlags: MOUSEEVENTF_HWHEEL,
                         time: 0,
                         dwExtraInfo: 0,
@@ -426,6 +427,100 @@ impl PowerProvider for WindowsNativeProvider {
                 }
                 _ => return Err(PlatformError::NotSupported(action.to_string())),
             }
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl MediaProvider for WindowsNativeProvider {
+    async fn media_command(&self, action: &str, _value: Option<f32>) -> Result<(), PlatformError> {
+        let vk = match action {
+            "play_pause" | "play" | "pause" | "toggle" => VK_MEDIA_PLAY_PAUSE,
+            "next" => VK_MEDIA_NEXT_TRACK,
+            "prev" | "previous" => VK_MEDIA_PREV_TRACK,
+            "volume_up" => VK_VOLUME_UP,
+            "volume_down" => VK_VOLUME_DOWN,
+            "mute" | "toggle_mute" => VK_VOLUME_MUTE,
+            _ => return Ok(()),
+        };
+        let down = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: vk,
+                    wScan: 0,
+                    dwFlags: KEYBD_EVENT_FLAGS(0),
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        let up = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: vk,
+                    wScan: 0,
+                    dwFlags: KEYEVENTF_KEYUP,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        unsafe {
+            SendInput(&[down, up], std::mem::size_of::<INPUT>() as i32);
+        }
+        Ok(())
+    }
+
+    async fn get_media_state(&self) -> Result<Option<MediaSessionState>, PlatformError> {
+        Ok(None)
+    }
+}
+
+#[async_trait]
+impl PresentationProvider for WindowsNativeProvider {
+    async fn presentation_command(
+        &self,
+        action: &str,
+        _slide_index: Option<u32>,
+    ) -> Result<(), PlatformError> {
+        let vk = match action {
+            "next" => VK_RIGHT,
+            "prev" | "previous" => VK_LEFT,
+            "start" | "slideshow_start" => VK_F5,
+            "black_screen" => VIRTUAL_KEY(0x42), // 'B'
+            "white_screen" => VIRTUAL_KEY(0x57), // 'W'
+            "exit" | "stop" => VK_ESCAPE,
+            _ => return Ok(()),
+        };
+        let down = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: vk,
+                    wScan: 0,
+                    dwFlags: KEYBD_EVENT_FLAGS(0),
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        let up = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: vk,
+                    wScan: 0,
+                    dwFlags: KEYEVENTF_KEYUP,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        unsafe {
+            SendInput(&[down, up], std::mem::size_of::<INPUT>() as i32);
         }
         Ok(())
     }

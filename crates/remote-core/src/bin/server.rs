@@ -15,15 +15,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!("Starting PC Companion Remote Server on port 8080...");
 
     let mock = Arc::new(MockPlatform::new());
+
+    #[cfg(windows)]
+    let (input_p, power_p, media_p, pres_p) = {
+        let win = Arc::new(platform_windows::WindowsNativeProvider::new());
+        info!("Running on Windows platform: Native Win32 SendInput, Media & Power enabled");
+        (
+            win.clone() as Arc<dyn remote_protocol::traits::InputProvider>,
+            win.clone() as Arc<dyn remote_protocol::traits::PowerProvider>,
+            win.clone() as Arc<dyn remote_protocol::traits::MediaProvider>,
+            win.clone() as Arc<dyn remote_protocol::traits::PresentationProvider>,
+        )
+    };
+
+    #[cfg(not(windows))]
+    let (input_p, power_p, media_p, pres_p) = {
+        info!("Running in non-Windows environment: MockPlatform enabled");
+        (
+            mock.clone() as Arc<dyn remote_protocol::traits::InputProvider>,
+            mock.clone() as Arc<dyn remote_protocol::traits::PowerProvider>,
+            mock.clone() as Arc<dyn remote_protocol::traits::MediaProvider>,
+            mock.clone() as Arc<dyn remote_protocol::traits::PresentationProvider>,
+        )
+    };
+
     let state = ServerState::new_with_providers(
+        input_p,
+        media_p,
+        pres_p,
         mock.clone(),
         mock.clone(),
         mock.clone(),
         mock.clone(),
-        mock.clone(),
-        mock.clone(),
-        mock.clone(),
-        mock.clone(),
+        power_p,
     );
 
     // Seed a pairing token for dev/testing

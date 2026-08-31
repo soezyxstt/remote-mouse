@@ -3,6 +3,9 @@ pub mod input;
 #[cfg(windows)]
 pub mod win32_impl;
 
+#[cfg(windows)]
+pub use win32_impl::WindowsNativeProvider;
+
 pub struct WindowsPlatform;
 
 impl WindowsPlatform {

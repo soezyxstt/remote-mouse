@@ -37,3 +37,4 @@ tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
 remote-protocol = { path = "crates/remote-protocol" }
 remote-core = { path = "crates/remote-core" }
 platform-mock = { path = "crates/platform-mock" }
+platform-windows = { path = "crates/platform-windows" }
