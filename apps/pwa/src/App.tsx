@@ -90,7 +90,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-background text-slate-100 overflow-hidden font-sans select-none">
+    <div className="flex flex-col h-full h-dvh w-full bg-background text-slate-100 overflow-hidden font-sans select-none">
       {/* Top App Header */}
       <Header
         connectionState={connectionState}
