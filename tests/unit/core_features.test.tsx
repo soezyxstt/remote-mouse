@@ -9,7 +9,7 @@ import { MediaSessionState } from '@remote/protocol';
 
 describe('Core Companion Feature Suite (Media, Slides, Clipboard)', () => {
   it('renders MediaRemote with playback state and handles play/pause command', () => {
-    const sendSpy = vi.spyOn(globalRemoteClient, 'send');
+    const executeSpy = vi.spyOn(globalRemoteClient, 'execute');
     const mockMedia: MediaSessionState = {
       title: 'Bohemian Rhapsody',
       artist: 'Queen',
@@ -33,7 +33,8 @@ describe('Core Companion Feature Suite (Media, Slides, Clipboard)', () => {
     expect(playPauseBtn).toBeDefined();
     if (playPauseBtn) {
       fireEvent.click(playPauseBtn);
-      expect(sendSpy).toHaveBeenCalledWith('media.command', {
+      expect(executeSpy).toHaveBeenCalledWith({
+        type: 'media.command',
         action: 'play_pause',
         value: undefined,
       });
@@ -41,7 +42,7 @@ describe('Core Companion Feature Suite (Media, Slides, Clipboard)', () => {
   });
 
   it('renders PresentationRemote and advances slides with haptic cues', () => {
-    const sendSpy = vi.spyOn(globalRemoteClient, 'send');
+    const executeSpy = vi.spyOn(globalRemoteClient, 'execute');
     render(<PresentationRemote />);
 
     expect(screen.getByText('Next Slide')).toBeInTheDocument();
@@ -50,11 +51,11 @@ describe('Core Companion Feature Suite (Media, Slides, Clipboard)', () => {
 
     const nextBtn = screen.getByRole('button', { name: /next slide/i });
     fireEvent.click(nextBtn);
-    expect(sendSpy).toHaveBeenCalledWith('presentation.command', { action: 'next' });
+    expect(executeSpy).toHaveBeenCalledWith({ type: 'presentation.command', action: 'next' });
   });
 
   it('renders ClipboardCompanion and sends text buffer to PC', () => {
-    const sendSpy = vi.spyOn(globalRemoteClient, 'send');
+    const executeSpy = vi.spyOn(globalRemoteClient, 'execute');
     render(<ClipboardCompanion />);
 
     expect(screen.getByText('Send Text to PC Clipboard')).toBeInTheDocument();
@@ -66,6 +67,9 @@ describe('Core Companion Feature Suite (Media, Slides, Clipboard)', () => {
     const sendBtn = screen.getByRole('button', { name: /send/i });
     fireEvent.click(sendBtn);
 
-    expect(sendSpy).toHaveBeenCalledWith('clipboard.set', { text: 'Copied from phone' });
+    expect(executeSpy).toHaveBeenCalledWith({
+      type: 'clipboard.set',
+      text: 'Copied from phone',
+    });
   });
 });

@@ -1,4 +1,4 @@
-use crate::crypto_session::{EncryptedFramePayload, SessionCipher};
+use crate::crypto_session::{EncryptedFramePayload, KeyAgreement, SessionCipher};
 use crate::devices::TrustedDevice;
 use crate::permissions::PermissionChecker;
 use crate::state::ServerState;
@@ -11,8 +11,11 @@ use axum::{
     routing::get,
     Router,
 };
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
+use rand::RngCore;
 use remote_protocol::*;
 use serde_json::json;
 use std::net::SocketAddr;
@@ -25,6 +28,30 @@ pub struct RemoteServer {
     pub state: ServerState,
     pub port: u16,
     pub static_pwa_dir: Option<String>,
+}
+
+struct PendingHandshake {
+    key_agreement: KeyAgreement,
+    client_ecdh_public_key: String,
+    client_nonce: String,
+    session_salt: Vec<u8>,
+}
+
+fn session_transcript(
+    client_id: &str,
+    challenge_nonce: &str,
+    pending: &PendingHandshake,
+) -> String {
+    [
+        "remote-companion-v1",
+        client_id,
+        challenge_nonce,
+        &pending.client_nonce,
+        &pending.client_ecdh_public_key,
+        &pending.key_agreement.public_key_b64,
+        &BASE64.encode(&pending.session_salt),
+    ]
+    .join("\n")
 }
 
 impl RemoteServer {
@@ -101,6 +128,39 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<ServerState>) -> i
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
+fn auth_error(timestamp: u64, message: &str) -> MessageEnvelope {
+    MessageEnvelope {
+        v: 1,
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp,
+        msg_type: "auth.error".to_string(),
+        data: json!({ "error": message }),
+    }
+}
+
+fn session_ready(
+    timestamp: u64,
+    capabilities: Vec<Capability>,
+    server_ecdh_public_key: String,
+    session_salt: String,
+) -> MessageEnvelope {
+    MessageEnvelope {
+        v: 1,
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp,
+        msg_type: "auth.session_ready".to_string(),
+        data: serde_json::to_value(SessionReadyData {
+            server_name: "Windows PC Agent".to_string(),
+            server_version: "0.1.0".to_string(),
+            capabilities,
+            active_display_count: 1,
+            server_ecdh_public_key,
+            session_salt,
+        })
+        .unwrap_or_default(),
+    }
+}
+
 async fn handle_socket(socket: WebSocket, state: ServerState) {
     let (mut ws_sender, mut ws_receiver) = socket.split();
     let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
@@ -126,6 +186,7 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
 
     let mut authenticated_device: Option<TrustedDevice> = None;
     let mut session_cipher: Option<SessionCipher> = None;
+    let mut pending_handshake: Option<PendingHandshake> = None;
 
     // Incoming message loop
     while let Some(Ok(msg)) = ws_receiver.next().await {
@@ -154,6 +215,7 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
                                     &state,
                                     &mut authenticated_device,
                                     &mut session_cipher,
+                                    &mut pending_handshake,
                                     &conn_id,
                                 )
                                 .await;
@@ -176,12 +238,24 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
                                 }
                             }
                         }
+                    } else if session_cipher.is_some() {
+                        let error_env = MessageEnvelope {
+                            v: 1,
+                            id: uuid::Uuid::new_v4().to_string(),
+                            timestamp: Utc::now().timestamp_millis() as u64,
+                            msg_type: "auth.error".to_string(),
+                            data: json!({ "error": "Protected session requires encrypted frames" }),
+                        };
+                        if let Ok(resp_json) = serde_json::to_string(&error_env) {
+                            let _ = tx.send(Message::Text(resp_json));
+                        }
                     } else {
                         let response = handle_message(
                             &env,
                             &state,
                             &mut authenticated_device,
                             &mut session_cipher,
+                            &mut pending_handshake,
                             &conn_id,
                         )
                         .await;
@@ -193,31 +267,9 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
                     }
                 }
             }
-            Message::Binary(bin) => {
-                // High-speed binary pointer delta: [dx: f32 (4 bytes), dy: f32 (4 bytes)]
-                if let Some(ref dev) = authenticated_device {
-                    let live_dev_opt =
-                        { state.device_registry.lock().unwrap().get(&dev.id).cloned() };
-                    let is_allowed = if let Some(live_dev) = live_dev_opt {
-                        !live_dev.is_blocked
-                            && live_dev.capabilities.contains(&Capability::InputMouse)
-                    } else {
-                        !dev.is_blocked && dev.capabilities.contains(&Capability::InputMouse)
-                    };
-
-                    if is_allowed && bin.len() >= 8 {
-                        let dx = f32::from_le_bytes(bin[0..4].try_into().unwrap());
-                        let dy = f32::from_le_bytes(bin[4..8].try_into().unwrap());
-                        if dx.is_finite()
-                            && dy.is_finite()
-                            && dx.abs() <= 10000.0
-                            && dy.abs() <= 10000.0
-                        {
-                            let _ = state.input_provider.pointer_move_relative(dx, dy).await;
-                        }
-                    }
-                }
-            }
+            // Raw binary pointer frames are intentionally rejected. Pointer
+            // deltas use the protected envelope lane after authentication.
+            Message::Binary(_) => {}
             Message::Ping(p) => {
                 let _ = tx.send(Message::Pong(p));
             }
@@ -243,6 +295,7 @@ async fn handle_message(
     state: &ServerState,
     auth_device: &mut Option<TrustedDevice>,
     session_cipher: &mut Option<SessionCipher>,
+    pending_handshake: &mut Option<PendingHandshake>,
     _conn_id: &str,
 ) -> Option<MessageEnvelope> {
     let now = Utc::now().timestamp_millis() as u64;
@@ -250,146 +303,140 @@ async fn handle_message(
     // 1. Auth and Pairing Handshakes
     if env.msg_type == "auth.pair_request" {
         if let Ok(req) = serde_json::from_value::<PairRequestData>(env.data.clone()) {
-            let mut auth = state.auth_manager.lock().unwrap();
-            let token_valid = auth.validate_pairing_token(&req.token);
-
-            if token_valid.is_ok() {
-                let is_ephemeral = env.data.get("authTier").and_then(|v| v.as_str())
-                    == Some("local_http_ephemeral");
-
-                // If ephemeral fallback, strictly grant Mouse, Media, Presentation only (NO arbitrary raw keyboard or files)
-                let caps = if is_ephemeral {
-                    vec![
-                        Capability::InputMouse,
-                        Capability::MediaControl,
-                        Capability::PresentationControl,
-                    ]
-                } else {
-                    Capability::default_capabilities()
-                };
-
-                let dev = TrustedDevice {
-                    id: req.client_id.clone(),
-                    name: req.client_name.clone(),
-                    public_key: req.public_key.clone(),
-                    capabilities: caps.clone(),
-                    created_at: now,
-                    last_seen_at: now,
-                    is_blocked: false,
-                };
-                state.device_registry.lock().unwrap().register(dev.clone());
-                *auth_device = Some(dev.clone());
-
-                // Derive AES-256 session cipher with directional keys (is_server: true)
-                *session_cipher = Some(SessionCipher::from_shared_secret(
-                    req.public_key.as_bytes(),
-                    req.token.as_bytes(),
-                    true,
-                ));
-
-                return Some(MessageEnvelope {
-                    v: 1,
-                    id: uuid::Uuid::new_v4().to_string(),
-                    timestamp: now,
-                    msg_type: "auth.session_ready".to_string(),
-                    data: serde_json::to_value(SessionReadyData {
-                        server_name: "Windows PC Agent".to_string(),
-                        server_version: "0.1.0".to_string(),
-                        capabilities: caps,
-                        active_display_count: 1,
-                    })
-                    .unwrap(),
-                });
-            } else {
-                return Some(MessageEnvelope {
-                    v: 1,
-                    id: uuid::Uuid::new_v4().to_string(),
-                    timestamp: now,
-                    msg_type: "auth.error".to_string(),
-                    data: json!({ "error": "Invalid or expired pairing token" }),
-                });
+            if req.auth_tier != "hosted_pwa_webcrypto" {
+                return Some(auth_error(now, "Secure WebCrypto client required"));
             }
+
+            let token_valid = state
+                .auth_manager
+                .lock()
+                .unwrap()
+                .validate_pairing_token(&req.token);
+            if token_valid.is_err() {
+                return Some(auth_error(now, "Invalid or expired pairing token"));
+            }
+
+            let server_agreement = KeyAgreement::new();
+            let server_public_key = server_agreement.public_key_b64.clone();
+            let mut session_salt = vec![0_u8; 32];
+            rand::rngs::OsRng.fill_bytes(&mut session_salt);
+            let cipher = match server_agreement.derive_session_cipher(
+                &req.ecdh_public_key,
+                &session_salt,
+                true,
+            ) {
+                Ok(cipher) => cipher,
+                Err(_) => return Some(auth_error(now, "Invalid client key agreement")),
+            };
+
+            let caps = Capability::default_capabilities();
+            let dev = TrustedDevice {
+                id: req.client_id.clone(),
+                name: req.client_name,
+                public_key: req.public_key,
+                capabilities: caps.clone(),
+                created_at: now,
+                last_seen_at: now,
+                is_blocked: false,
+            };
+            state.device_registry.lock().unwrap().register(dev.clone());
+            *auth_device = Some(dev);
+            *session_cipher = Some(cipher);
+
+            return Some(session_ready(
+                now,
+                caps,
+                server_public_key,
+                BASE64.encode(session_salt),
+            ));
         }
+        return Some(auth_error(now, "Malformed pairing request"));
     }
 
     if env.msg_type == "auth.login_challenge" {
-        if let Ok(challenge_req) = serde_json::from_value::<LoginChallengeData>(env.data.clone()) {
-            let mut auth = state.auth_manager.lock().unwrap();
-            let nonce = auth.create_login_challenge(&challenge_req.nonce);
+        if let Ok(req) = serde_json::from_value::<LoginChallengeData>(env.data.clone()) {
+            let device_exists = state
+                .device_registry
+                .lock()
+                .unwrap()
+                .get(&req.client_id)
+                .is_some_and(|device| !device.is_blocked);
+            if !device_exists {
+                return Some(auth_error(now, "Pairing required"));
+            }
+
+            let challenge_nonce = state
+                .auth_manager
+                .lock()
+                .unwrap()
+                .create_login_challenge(&req.client_id);
+            let key_agreement = KeyAgreement::new();
+            let server_public_key = key_agreement.public_key_b64.clone();
+            let mut session_salt = vec![0_u8; 32];
+            rand::rngs::OsRng.fill_bytes(&mut session_salt);
+            let salt_b64 = BASE64.encode(&session_salt);
+            *pending_handshake = Some(PendingHandshake {
+                key_agreement,
+                client_ecdh_public_key: req.ecdh_public_key,
+                client_nonce: req.client_nonce,
+                session_salt,
+            });
             return Some(MessageEnvelope {
                 v: 1,
                 id: uuid::Uuid::new_v4().to_string(),
                 timestamp: now,
                 msg_type: "auth.login_challenge".to_string(),
-                data: json!({ "nonce": nonce }),
+                data: json!({
+                    "nonce": challenge_nonce,
+                    "serverEcdhPublicKey": server_public_key,
+                    "sessionSalt": salt_b64,
+                }),
             });
         }
+        return Some(auth_error(now, "Malformed login challenge request"));
     }
 
     if env.msg_type == "auth.login_response" {
         if let Ok(login_req) = serde_json::from_value::<LoginResponseData>(env.data.clone()) {
-            let device_opt = {
-                state
-                    .device_registry
-                    .lock()
-                    .unwrap()
-                    .get(&login_req.client_id)
-                    .cloned()
-            };
+            let device_opt = state
+                .device_registry
+                .lock()
+                .unwrap()
+                .get(&login_req.client_id)
+                .cloned();
+            let pending = pending_handshake.take();
 
-            if let Some(dev) = device_opt {
+            if let (Some(dev), Some(pending)) = (device_opt, pending) {
                 if dev.is_blocked {
-                    return Some(MessageEnvelope {
-                        v: 1,
-                        id: uuid::Uuid::new_v4().to_string(),
-                        timestamp: now,
-                        msg_type: "auth.error".to_string(),
-                        data: json!({ "error": "Device is blocked" }),
-                    });
+                    return Some(auth_error(now, "Device is blocked"));
                 }
-
-                let mut auth = state.auth_manager.lock().unwrap();
-                let verify_res = auth.verify_signature(
+                let transcript =
+                    session_transcript(&login_req.client_id, &login_req.nonce, &pending);
+                let verify_res = state.auth_manager.lock().unwrap().verify_signature(
                     &login_req.client_id,
                     &dev.public_key,
                     &login_req.signature,
                     &login_req.nonce,
+                    transcript.as_bytes(),
                 );
-
                 if verify_res.is_ok() {
-                    *auth_device = Some(dev.clone());
-
-                    // Establish session cipher with ECDSA challenge nonce as salt and directional keys
-                    *session_cipher = Some(SessionCipher::from_shared_secret(
-                        dev.public_key.as_bytes(),
-                        login_req.nonce.as_bytes(),
+                    let server_public_key = pending.key_agreement.public_key_b64.clone();
+                    let salt_b64 = BASE64.encode(&pending.session_salt);
+                    let cipher = pending.key_agreement.derive_session_cipher(
+                        &pending.client_ecdh_public_key,
+                        &pending.session_salt,
                         true,
-                    ));
-
-                    return Some(MessageEnvelope {
-                        v: 1,
-                        id: uuid::Uuid::new_v4().to_string(),
-                        timestamp: now,
-                        msg_type: "auth.session_ready".to_string(),
-                        data: serde_json::to_value(SessionReadyData {
-                            server_name: "Windows PC Agent".to_string(),
-                            server_version: "0.1.0".to_string(),
-                            capabilities: dev.capabilities,
-                            active_display_count: 1,
-                        })
-                        .unwrap(),
-                    });
+                    );
+                    if let Ok(cipher) = cipher {
+                        let caps = dev.capabilities.clone();
+                        *auth_device = Some(dev);
+                        *session_cipher = Some(cipher);
+                        return Some(session_ready(now, caps, server_public_key, salt_b64));
+                    }
                 }
             }
-
-            return Some(MessageEnvelope {
-                v: 1,
-                id: uuid::Uuid::new_v4().to_string(),
-                timestamp: now,
-                msg_type: "auth.error".to_string(),
-                data: json!({ "error": "Authentication failed" }),
-            });
         }
+        return Some(auth_error(now, "Authentication failed"));
     }
 
     // 2. Enforce Capability Permissions for Authenticated Sessions
@@ -542,6 +589,54 @@ async fn handle_message(
             }
             None
         }
+        "windows.list" => match state.window_manager.get_windows().await {
+            Ok(windows) => Some(MessageEnvelope {
+                v: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: now,
+                msg_type: "windows.items".to_string(),
+                data: serde_json::to_value(windows).unwrap_or_default(),
+            }),
+            Err(error) => Some(MessageEnvelope {
+                v: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: now,
+                msg_type: "error".to_string(),
+                data: json!({ "error": error.to_string() }),
+            }),
+        },
+        "apps.list" => match state.app_launcher.list_apps().await {
+            Ok(apps) => Some(MessageEnvelope {
+                v: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: now,
+                msg_type: "apps.items".to_string(),
+                data: serde_json::to_value(apps).unwrap_or_default(),
+            }),
+            Err(error) => Some(MessageEnvelope {
+                v: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: now,
+                msg_type: "error".to_string(),
+                data: json!({ "error": error.to_string() }),
+            }),
+        },
+        "displays.list" => match state.window_manager.get_displays().await {
+            Ok(displays) => Some(MessageEnvelope {
+                v: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: now,
+                msg_type: "state.displays".to_string(),
+                data: serde_json::to_value(displays).unwrap_or_default(),
+            }),
+            Err(error) => Some(MessageEnvelope {
+                v: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: now,
+                msg_type: "error".to_string(),
+                data: json!({ "error": error.to_string() }),
+            }),
+        },
 
         // Macros
         "macro.execute" => {

@@ -92,6 +92,7 @@ impl AuthManager {
         public_key_b64: &str,
         signature_b64: &str,
         nonce: &str,
+        signed_message: &[u8],
     ) -> Result<(), AuthError> {
         // Validate challenge nonce
         let stored_nonce = self.active_challenges.remove(client_id);
@@ -113,7 +114,7 @@ impl AuthManager {
                     if let Ok(sig) = Signature::from_der(&sig_bytes)
                         .or_else(|_| Signature::from_slice(&sig_bytes))
                     {
-                        if verifying_key.verify(nonce.as_bytes(), &sig).is_ok() {
+                        if verifying_key.verify(signed_message, &sig).is_ok() {
                             return Ok(());
                         } else {
                             return Err(AuthError::InvalidSignature);
@@ -122,14 +123,6 @@ impl AuthManager {
                 }
                 return Err(AuthError::InvalidSignature);
             }
-        }
-
-        // Fallback for tests or ephemeral keys
-        if signature_b64.starts_with("test_sig_")
-            || signature_b64 == "key"
-            || signature_b64 == "valid_signature"
-        {
-            return Ok(());
         }
 
         Err(AuthError::InvalidSignature)

@@ -1,32 +1,21 @@
-import { useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { globalRemoteClient } from '../../protocol/client';
+import { GestureOutput, GestureRecognizer, SwipeDirection } from './gestureRecognizer';
 
 export interface GestureOptions {
   sensitivity?: number;
   acceleration?: number;
-  naturalScroll?: boolean;
-  onThreeFingerSwipe?: (direction: 'left' | 'right' | 'up' | 'down') => void;
-}
-
-interface TouchPoint {
-  id: number;
-  startX: number;
-  startY: number;
-  lastX: number;
-  lastY: number;
-  startTime: number;
+  onMultiFingerSwipe?: (fingers: 3 | 4, direction: SwipeDirection) => void;
 }
 
 export function useTouchGestures(options: GestureOptions = {}) {
   const sensitivity = options.sensitivity ?? 1.2;
   const acceleration = options.acceleration ?? 0.05;
-  const naturalScroll = options.naturalScroll ?? true;
-  const onThreeFingerSwipe = options.onThreeFingerSwipe;
-
-  const touchesRef = useRef<Map<number, TouchPoint>>(new Map());
-  const isDraggingRef = useRef<boolean>(false);
+  const onMultiFingerSwipe = options.onMultiFingerSwipe;
+  const recognizerRef = useRef(new GestureRecognizer());
   const rafIdRef = useRef<number | null>(null);
-  const pendingDeltaRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+  const pendingDeltaRef = useRef({ dx: 0, dy: 0 });
+  const pinchAccumulatorRef = useRef(0);
 
   const flushPointerDeltas = useCallback(() => {
     const { dx, dy } = pendingDeltaRef.current;
@@ -43,104 +32,93 @@ export function useTouchGestures(options: GestureOptions = {}) {
       const factor = sensitivity * (1 + distance * acceleration);
       pendingDeltaRef.current.dx += rawDx * factor;
       pendingDeltaRef.current.dy += rawDy * factor;
-
-      if (!rafIdRef.current) {
-        rafIdRef.current = requestAnimationFrame(flushPointerDeltas);
-      }
+      if (rafIdRef.current === null) rafIdRef.current = requestAnimationFrame(flushPointerDeltas);
     },
-    [sensitivity, acceleration, flushPointerDeltas]
+    [acceleration, flushPointerDeltas, sensitivity]
   );
 
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const point: TouchPoint = {
-      id: e.pointerId,
-      startX: e.clientX,
-      startY: e.clientY,
-      lastX: e.clientX,
-      lastY: e.clientY,
-      startTime: Date.now(),
-    };
-    touchesRef.current.set(e.pointerId, point);
-  }, []);
+  const dispatch = useCallback(
+    (outputs: GestureOutput[]) => {
+      outputs.forEach((output) => {
+        switch (output.type) {
+          case 'pointer_move':
+            queuePointerDelta(output.dx, output.dy);
+            break;
+          case 'button':
+            globalRemoteClient.execute({
+              type: 'pointer.button',
+              button: output.button,
+              state: output.state,
+            });
+            break;
+          case 'pinch':
+            pinchAccumulatorRef.current += output.delta;
+            if (Math.abs(pinchAccumulatorRef.current) >= 8) {
+              globalRemoteClient.execute({
+                type: 'keyboard.shortcut',
+                keys: ['Control', pinchAccumulatorRef.current > 0 ? '=' : '-'],
+              });
+              pinchAccumulatorRef.current = 0;
+            }
+            break;
+          case 'multi_swipe':
+            onMultiFingerSwipe?.(output.fingers, output.direction);
+            break;
+        }
+      });
+    },
+    [onMultiFingerSwipe, queuePointerDelta]
+  );
 
+  const sample = useCallback(
+    (phase: 'down' | 'move' | 'up' | 'cancel', event: React.PointerEvent<HTMLDivElement>) => {
+      dispatch(
+        recognizerRef.current.handle({
+          phase,
+          id: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          timestamp: event.timeStamp || Date.now(),
+        })
+      );
+    },
+    [dispatch]
+  );
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      sample('down', event);
+    },
+    [sample]
+  );
   const onPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const point = touchesRef.current.get(e.pointerId);
-      if (!point) return;
-
-      const dx = e.clientX - point.lastX;
-      const dy = e.clientY - point.lastY;
-      point.lastX = e.clientX;
-      point.lastY = e.clientY;
-
-      const touchCount = touchesRef.current.size;
-
-      if (touchCount === 1) {
-        queuePointerDelta(dx, dy);
-      } else if (touchCount === 2) {
-        // Two finger scroll
-        const scrollMultiplier = naturalScroll ? -0.1 : 0.1;
-        globalRemoteClient.send('input.pointer.scroll', {
-          dx: dx * 0.05,
-          dy: dy * scrollMultiplier,
-        });
-      }
-    },
-    [queuePointerDelta, naturalScroll]
+    (event: React.PointerEvent<HTMLDivElement>) => sample('move', event),
+    [sample]
   );
-
   const onPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const point = touchesRef.current.get(e.pointerId);
-      if (!point) return;
-
-      const duration = Date.now() - point.startTime;
-      const totalDx = Math.abs(e.clientX - point.startX);
-      const totalDy = Math.abs(e.clientY - point.startY);
-      const totalDist = Math.hypot(totalDx, totalDy);
-      const touchCount = touchesRef.current.size;
-
-      touchesRef.current.delete(e.pointerId);
-
-      // Tap detection (quick duration and small movement)
-      if (duration < 280 && totalDist < 12) {
-        if (touchCount === 1) {
-          // Left click
-          globalRemoteClient.send('input.pointer.button', {
-            button: 'left',
-            state: 'click',
-          });
-        } else if (touchCount === 2) {
-          // Right click
-          globalRemoteClient.send('input.pointer.button', {
-            button: 'right',
-            state: 'click',
-          });
-        }
-      }
-
-      // Three-finger swipe gesture detection
-      if (touchCount === 3 && totalDist > 40 && duration < 600) {
-        if (totalDx > totalDy) {
-          onThreeFingerSwipe?.(e.clientX > point.startX ? 'right' : 'left');
-        } else {
-          onThreeFingerSwipe?.(e.clientY > point.startY ? 'down' : 'up');
-        }
-      }
-    },
-    [onThreeFingerSwipe]
+    (event: React.PointerEvent<HTMLDivElement>) => sample('up', event),
+    [sample]
+  );
+  const onPointerCancel = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => sample('cancel', event),
+    [sample]
   );
 
-  const onPointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    touchesRef.current.delete(e.pointerId);
-  }, []);
+  useEffect(() => {
+    const release = () => dispatch(recognizerRef.current.cancelAll());
+    const onVisibility = () => {
+      if (document.hidden) release();
+    };
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      release();
+    };
+  }, [dispatch]);
 
-  return {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    onPointerCancel,
-    isDraggingRef,
-  };
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
 }

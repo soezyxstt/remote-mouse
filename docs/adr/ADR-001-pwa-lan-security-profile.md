@@ -2,45 +2,74 @@
 
 ## Status
 
-Accepted
+Proposed — blocked pending an implemented TLS/delivery profile and physical-device validation.
+The previous `Accepted` record and its Android/iOS test claims were invalidated by the 2026-08-31
+audit because no supporting device evidence exists.
 
 ## Context
 
-Remote Mouse requires a low-latency, zero-cloud, peer-to-peer control path between a mobile companion device (PWA on iOS Safari / Android Chrome) and a Windows desktop host on the local area network (LAN).
+Remote Mouse needs a low-latency, zero-cloud path between a mobile browser and a Windows host. The
+browser constraints are part of the security boundary:
 
-Standard browser security models impose strict constraints on LAN communication:
+1. A hosted HTTPS PWA cannot open an insecure `ws://` LAN connection without mixed-content risk.
+2. `SubtleCrypto` is exposed only in a secure context by the Web Crypto specification, so a client
+   served from an ordinary `http://<lan-ip>` origin cannot be the supported WebCrypto profile.
+3. A locally generated TLS certificate is useful only after the phone trusts its issuer and the
+   requested hostname matches the certificate.
 
-1. **Hosted HTTPS to Insecure WebSocket (Mixed Content)**: Modern mobile browsers block mixed-content WebSockets (`ws://192.168.x.x`) originating from an HTTPS-hosted origin (`https://my-pwa.app`).
-2. **Local HTTP Origin (`http://<lan-ip>:port`)**: Insecure contexts restrict WebCrypto (`crypto.subtle`) and service workers unless hosted on `localhost` or served over TLS.
-3. **Self-Signed Certificates**: Browsers refuse WebSocket connections to self-signed TLS certificates unless the user manually imports a custom root Certificate Authority (CA) into the mobile OS trust store, introducing high friction for everyday users.
+References:
 
-## Decision: Dual-Tier Zero-Cloud Architecture
+- <https://www.w3.org/TR/WebCryptoAPI/#dfn-SubtleCrypto>
+- <https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API>
 
-We adopt a two-tier security profile that maximizes compatibility while enforcing zero-cloud data privacy and cryptographic access control:
+## Profiles considered
 
-### Tier 1 (Primary / Recommended): Companion-Served Web Client with Application-Layer Crypto
+### Companion-served HTTP plus application-layer crypto
 
-- **Delivery**: The desktop Windows companion runs an integrated lightweight HTTP web server delivering the static PWA assets directly over LAN (`http://<desktop-lan-ip>:8080`).
-- **Cryptographic Protection**:
-  - P-256 ECDH (Elliptic Curve Diffie-Hellman) key exchange during pairing.
-  - Bidirectional AES-256-GCM authenticated encryption for session frames.
-  - Per-device cryptographic keys with ECDSA challenge-response verification.
-  - Monotonic 64-bit sequence counters with 96-bit nonces preventing replay and reordering.
-- **Fail-Closed Permissions**: High-privilege capabilities (`power.shutdown`, `power.restart`, `files.write`) are strictly disabled by default and require manual desktop user authorization.
+Rejected as the current production profile. It avoids HTTPS mixed content, but the HTTP LAN origin
+does not provide the secure context required by the browser implementation in
+`apps/pwa/src/protocol/crypto.ts`. Shipping a reduced plaintext or shared-PIN tier would recreate the
+audited vulnerability.
 
-### Tier 2 (Emergency / Insecure Context Fallback): Restricted Ephemeral Session
+### Locally trusted HTTPS/WSS companion
 
-- When WebCrypto is unavailable (e.g., legacy mobile browser or unprovisioned HTTP context), an ephemeral, single-session token is used with restricted capabilities:
-  - Allowed: `input.mouse`, `media.control`, `presentation.control`.
-  - Prohibited: arbitrary keyboard raw text execution, file system access, power state modifications, and macro execution.
+Preferred PWA candidate. The companion serves the PWA and WebSocket over TLS using an identity that
+the phone explicitly trusts. This keeps WebCrypto, service workers, and WSS available, but certificate
+provisioning, hostname verification, rotation/revocation, and iOS/Android installation instructions
+must be implemented and tested before this ADR can be accepted.
 
-## Verification & Browser Evidence
+### Hosted HTTPS PWA plus trusted WSS companion
 
-- Android Chrome (v120+): Tested with local HTTP companion origin. Supports touch gestures, full-screen PWA manifest, and WebCrypto on LAN.
-- iOS Safari (iOS 16+ / 17+): Tested with local HTTP origin. Mixed-content restrictions avoided by serving client directly from companion.
+Viable only if the same companion certificate/trust requirements are solved and the server enforces
+an allowlist for the hosted origin. It adds a cloud delivery dependency but does not relay control
+traffic.
 
-## Consequences
+### Native-client acceleration
 
-- **Positive**: Complete offline operation without external servers, relay fees, or cloud trust dependencies.
-- **Positive**: Hard cryptographic isolation between LAN peers. Unpaired devices cannot sniff mouse movements, clipboard contents, or keystrokes.
-- **Negative**: Users connect via local IP/mDNS or scanning a desktop QR code containing the pairing token and LAN endpoint.
+Deferred until Stage 012. A native client can use the protocol without browser secure-context and
+certificate UX constraints, but moving early would duplicate an unstable contract.
+
+## Provisional decision
+
+- Keep the P-256 ECDH, transcript-bound ECDSA login, directional HKDF/AES-256-GCM session frames,
+  strict sequence counters, and encrypted pointer path implemented by the remediation.
+- Fail closed when `window.isSecureContext` or `crypto.subtle` is unavailable. There is no emergency
+  plaintext tier.
+- Do not claim a supported physical PWA connection profile until locally trusted HTTPS/WSS (or a
+  separately reviewed alternative) passes Android and iOS tests.
+- The final QR must bind the expected PC identity, trusted hostname/endpoint, and one-time pairing
+  ceremony. A six-digit PIN sent as ordinary LAN JSON is not sufficient server authentication.
+- Destructive/file/clipboard/automation capabilities remain disabled until the desktop user grants
+  them and the live persistent device registry authorizes each action.
+
+## Acceptance evidence still required
+
+- Companion TLS/WSS implementation and restricted origin/host policy.
+- First-pair and reconnect E2E, including wrong host, certificate mismatch, replay, revoke, and
+  interrupted-handshake recovery.
+- Physical Android Chrome and iOS Safari versions, trust-provisioning steps, installability result,
+  and screenshots/logs with reusable secrets redacted.
+- Explicit review of certificate renewal/revocation and PC identity display in the QR flow.
+
+Until those gates pass, Stage 003 remains `IN_PROGRESS` and the product must describe browser LAN
+connectivity as unavailable rather than silently weakening transport security.

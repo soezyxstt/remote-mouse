@@ -86,11 +86,22 @@ pub struct PairRequestData {
     pub token: String,
     #[serde(rename = "publicKey")]
     pub public_key: String,
+    #[serde(rename = "ecdhPublicKey")]
+    pub ecdh_public_key: String,
+    #[serde(rename = "clientNonce")]
+    pub client_nonce: String,
+    #[serde(rename = "authTier")]
+    pub auth_tier: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoginChallengeData {
-    pub nonce: String,
+    #[serde(rename = "clientId")]
+    pub client_id: String,
+    #[serde(rename = "ecdhPublicKey")]
+    pub ecdh_public_key: String,
+    #[serde(rename = "clientNonce")]
+    pub client_nonce: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -112,6 +123,10 @@ pub struct SessionReadyData {
     pub capabilities: Vec<Capability>,
     #[serde(rename = "activeDisplayCount")]
     pub active_display_count: u32,
+    #[serde(rename = "serverEcdhPublicKey")]
+    pub server_ecdh_public_key: String,
+    #[serde(rename = "sessionSalt")]
+    pub session_salt: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -148,6 +163,10 @@ pub struct DisplayInfo {
     pub height: u32,
     #[serde(rename = "isPrimary")]
     pub is_primary: bool,
+    pub x: i32,
+    pub y: i32,
+    #[serde(rename = "scaleFactor")]
+    pub scale_factor: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

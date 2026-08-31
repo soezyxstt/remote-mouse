@@ -5,7 +5,10 @@ import {
   FIXTURE_PANELS,
   ForegroundAppState,
   PanelDefinition,
+  AppInfo,
+  WindowInfo,
 } from '@remote/protocol';
+import { searchCapabilities } from '../../apps/pwa/src/features/search/searchEngine';
 
 describe('Context Engine and Quick Search Suite', () => {
   it('determines correct contextual recommendation for media apps', () => {
@@ -30,7 +33,7 @@ describe('Context Engine and Quick Search Suite', () => {
     expect(app.processName.toLowerCase()).toContain('powerpnt');
   });
 
-  it('filters panels and actions deterministically by search query', () => {
+  it('searches production providers with deterministic ranking', () => {
     const panels: PanelDefinition[] = [
       ...FIXTURE_PANELS,
       {
@@ -44,23 +47,28 @@ describe('Context Engine and Quick Search Suite', () => {
       },
     ];
 
-    const filterPanels = (query: string) => {
-      const q = query.toLowerCase().trim();
-      if (!q) return panels;
-      return panels.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
-      );
-    };
+    const apps: AppInfo[] = [{ id: 'spotify', name: 'Spotify', executablePath: 'spotify.lnk' }];
+    const windows: WindowInfo[] = [
+      {
+        id: 'window-1',
+        title: 'Spotify Premium',
+        processName: 'spotify.exe',
+        displayIndex: 0,
+        isMaximized: false,
+        isMinimized: false,
+      },
+    ];
+    const first = searchCapabilities('spotify', { apps, windows, panels });
+    const second = searchCapabilities('spotify', { apps, windows, panels });
+    expect(first).toEqual(second);
+    expect(first.map((result) => result.provider)).toEqual(['apps', 'windows']);
+    expect(first[0].action).toEqual({ type: 'apps.launch', appId: 'spotify' });
 
-    const devResults = filterPanels('dev');
-    expect(devResults).toHaveLength(1);
-    expect(devResults[0].id).toBe('panel-dev');
+    const panelResults = searchCapabilities('music', { apps, windows, panels });
+    expect(panelResults[0].id).toBe('panel:panel-media-quick');
 
-    const musicResults = filterPanels('music');
-    expect(musicResults).toHaveLength(1);
-    expect(musicResults[0].id).toBe('panel-media-quick');
-
-    const emptyResults = filterPanels('');
-    expect(emptyResults).toHaveLength(2);
+    const emptyResults = searchCapabilities('', { apps, windows, panels });
+    expect(emptyResults.some((result) => result.provider === 'actions')).toBe(true);
+    expect(emptyResults.some((result) => result.provider === 'navigation')).toBe(true);
   });
 });

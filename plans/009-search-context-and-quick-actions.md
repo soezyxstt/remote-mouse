@@ -39,7 +39,8 @@ Requires Stages 007 and 008.
 
 ## Completion record
 
-- Status: `VERIFIED`
-- Ranking contract/evidence: Deterministic normalized ranking with deduplication verified
-- Context false-positive notes: Non-intrusive AppAware toast with explicit per-process dismissal
-- Commit and QA evidence: `checkpoint-stage-009` / `artifacts/overhaul/stage-009/run-001/execution-log.md`
+- Status: `IN_PROGRESS`
+- Ranking contract/evidence: production deterministic normalization, ranking, and deduplication now cover apps, windows, panels, actions, and navigation.
+- Context false-positive notes: Control adapts without forced navigation and supports pin/reset; browser/media/presentation use explicit categories with a generic fallback.
+- Automated/visual evidence: `tests/unit/context_engine.test.ts` now imports production code; reviewed browser results are recorded in `artifacts/overhaul/remediation-2026-08-31/execution-log.md`.
+- Remaining gates: allowed-root file metadata, recent/pinned persistence, cancellation/time budgets, provider isolation/capability filtering, provider-by-provider E2E, and physical false-positive QA.

@@ -7,7 +7,7 @@ import { globalRemoteClient } from '../../apps/pwa/src/protocol/client';
 
 describe('DynamicPanelRenderer Unit Tests', () => {
   it('renders components from panel definition and dispatches action on click', () => {
-    const sendSpy = vi.spyOn(globalRemoteClient, 'send');
+    const executeSpy = vi.spyOn(globalRemoteClient, 'execute');
     const panel = FIXTURE_PANELS[0];
 
     render(<DynamicPanelRenderer panel={panel} />);
@@ -18,6 +18,6 @@ describe('DynamicPanelRenderer Unit Tests', () => {
     const terminalBtn = screen.getByRole('button', { name: /terminal/i });
     fireEvent.click(terminalBtn);
 
-    expect(sendSpy).toHaveBeenCalledWith('apps.launch', { appId: 'wt.exe' });
+    expect(executeSpy).toHaveBeenCalledWith({ type: 'apps.launch', appId: 'wt.exe' });
   });
 });

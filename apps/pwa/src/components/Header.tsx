@@ -1,18 +1,21 @@
 import React from 'react';
 import { ConnectionState } from '../protocol/client';
-import { ForegroundAppState } from '@remote/protocol';
-import { Wifi, WifiOff, Laptop } from 'lucide-react';
+import { Laptop, Search, Settings, Zap } from 'lucide-react';
 
 interface HeaderProps {
   connectionState: ConnectionState;
-  foregroundApp: ForegroundAppState | null;
   onOpenPairing: () => void;
+  onOpenSearch: () => void;
+  onOpenQuickActions: () => void;
+  onOpenSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   connectionState,
-  foregroundApp,
   onOpenPairing,
+  onOpenSearch,
+  onOpenQuickActions,
+  onOpenSettings,
 }) => {
   const isConnected = connectionState === 'connected';
 
@@ -38,25 +41,29 @@ export const Header: React.FC<HeaderProps> = ({
         />
       </button>
 
-      {/* Foreground App Pill */}
-      {foregroundApp && isConnected && (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-surface-elevated/70 border border-white/5 rounded-full text-[11px] text-slate-300 font-medium truncate max-w-[160px]">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-          <span className="truncate">{foregroundApp.processName.replace(/\.exe$/i, '')}</span>
-        </div>
-      )}
-
-      {/* Connection Indicator */}
-      <button
-        onClick={onOpenPairing}
-        className={`p-2 rounded-xl border transition-colors ${
-          isConnected
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-        }`}
-      >
-        {isConnected ? <Wifi size={15} /> : <WifiOff size={15} />}
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onOpenSearch}
+          aria-label="Search"
+          className="min-h-11 min-w-11 rounded-xl text-slate-300 hover:bg-surface-elevated"
+        >
+          <Search size={16} className="mx-auto" />
+        </button>
+        <button
+          onClick={onOpenQuickActions}
+          aria-label="Quick Actions"
+          className="min-h-11 min-w-11 rounded-xl text-slate-300 hover:bg-surface-elevated"
+        >
+          <Zap size={16} className="mx-auto" />
+        </button>
+        <button
+          onClick={onOpenSettings}
+          aria-label="Settings"
+          className="min-h-11 min-w-11 rounded-xl text-slate-300 hover:bg-surface-elevated"
+        >
+          <Settings size={16} className="mx-auto" />
+        </button>
+      </div>
     </header>
   );
 };

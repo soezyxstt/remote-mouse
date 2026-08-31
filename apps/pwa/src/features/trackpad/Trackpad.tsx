@@ -1,152 +1,192 @@
-import React, { useState } from 'react';
-import { useTouchGestures } from './useTouchGestures';
+import React, { useEffect, useState } from 'react';
+import { Hand, Lock, MousePointer, Sliders, Unlock } from 'lucide-react';
 import { globalRemoteClient } from '../../protocol/client';
-import { Lock, Unlock, Sliders, MousePointer, Hand } from 'lucide-react';
+import { SidePad, SidePadMode } from './SidePad';
+import { useTouchGestures } from './useTouchGestures';
+
+type Side = 'left' | 'right';
+
+const readNumber = (key: string, fallback: number) => {
+  const value = Number(localStorage.getItem(key));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+};
 
 export const Trackpad: React.FC = () => {
-  const [sensitivity, setSensitivity] = useState<number>(1.2);
-  const [naturalScroll, setNaturalScroll] = useState<boolean>(true);
-  const [dragLock, setDragLock] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [sensitivity, setSensitivity] = useState(() => readNumber('trackpad_sensitivity', 1.2));
+  const [sidePadWidth, setSidePadWidth] = useState(() => readNumber('sidepad_width', 42));
+  const [sidePadSide, setSidePadSide] = useState<Side>(
+    () => (localStorage.getItem('sidepad_side') as Side | null) ?? 'right'
+  );
+  const [sidePadMode, setSidePadMode] = useState<SidePadMode>(
+    () => (localStorage.getItem('sidepad_mode') as SidePadMode | null) ?? 'scroll'
+  );
+  const [dragLock, setDragLock] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const { onPointerDown, onPointerMove, onPointerUp, onPointerCancel } = useTouchGestures({
+  useEffect(() => {
+    localStorage.setItem('trackpad_sensitivity', String(sensitivity));
+    localStorage.setItem('sidepad_width', String(sidePadWidth));
+    localStorage.setItem('sidepad_side', sidePadSide);
+    localStorage.setItem('sidepad_mode', sidePadMode);
+  }, [sensitivity, sidePadMode, sidePadSide, sidePadWidth]);
+
+  const gestures = useTouchGestures({
     sensitivity,
-    naturalScroll,
-    onThreeFingerSwipe: (dir) => {
-      // 3-finger swipe snap
-      if (dir === 'left') {
-        globalRemoteClient.send('windows.action', { windowId: 'foreground', action: 'snap_left' });
-      } else if (dir === 'right') {
-        globalRemoteClient.send('windows.action', { windowId: 'foreground', action: 'snap_right' });
-      }
+    onMultiFingerSwipe: (fingers, direction) => {
+      const keys =
+        fingers === 4
+          ? direction === 'left'
+            ? ['Control', 'Meta', 'ArrowRight']
+            : direction === 'right'
+              ? ['Control', 'Meta', 'ArrowLeft']
+              : direction === 'up'
+                ? ['Meta', 'Tab']
+                : ['Meta', 'd']
+          : direction === 'left'
+            ? ['Alt', 'Tab']
+            : direction === 'right'
+              ? ['Alt', 'Shift', 'Tab']
+              : direction === 'up'
+                ? ['Meta', 'Tab']
+                : ['Meta', 'd'];
+      globalRemoteClient.execute({ type: 'keyboard.shortcut', keys });
     },
   });
 
-  React.useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (dragLock) {
-        globalRemoteClient.send('input.pointer.button', { button: 'left', state: 'up' });
+        globalRemoteClient.execute({ type: 'pointer.button', button: 'left', state: 'up' });
       }
-    };
-  }, [dragLock]);
+    },
+    [dragLock]
+  );
 
   const toggleDragLock = () => {
     const next = !dragLock;
     setDragLock(next);
-    globalRemoteClient.send('input.pointer.button', {
+    globalRemoteClient.execute({
+      type: 'pointer.button',
       button: 'left',
       state: next ? 'down' : 'up',
     });
   };
 
-  const handleLeftButton = (state: 'down' | 'up') => {
-    globalRemoteClient.send('input.pointer.button', {
-      button: 'left',
-      state,
-    });
+  const clickBar = (button: 'left' | 'right', state: 'down' | 'up') => {
+    globalRemoteClient.execute({ type: 'pointer.button', button, state });
   };
 
-  const handleRightButton = (state: 'down' | 'up') => {
-    globalRemoteClient.send('input.pointer.button', {
-      button: 'right',
-      state,
-    });
-  };
+  const sidePad = <SidePad mode={sidePadMode} width={sidePadWidth} sensitivity={sensitivity} />;
 
   return (
-    <div className="flex flex-col h-full w-full select-none overflow-hidden p-2 gap-2">
-      {/* Top Quick Settings Pill */}
-      <div className="flex items-center justify-between px-2 py-1 bg-surface/80 backdrop-blur rounded-xl border border-white/5 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleDragLock}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all ${
-              dragLock
-                ? 'bg-primary text-white font-medium shadow-md shadow-primary/30'
-                : 'bg-surface-elevated text-slate-300'
-            }`}
-          >
-            {dragLock ? <Lock size={13} /> : <Unlock size={13} />}
-            <span>Drag Lock</span>
-          </button>
-        </div>
-
+    <div className="flex h-full w-full select-none flex-col gap-2 overflow-hidden p-2">
+      <div className="flex items-center justify-between rounded-xl border border-white/5 bg-surface/80 px-2 py-1 text-xs text-slate-400 backdrop-blur">
         <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="p-1.5 rounded-lg bg-surface-elevated hover:bg-surface-hover text-slate-300 transition-colors"
+          onClick={toggleDragLock}
+          className={`flex min-h-11 items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+            dragLock
+              ? 'bg-primary font-medium text-white shadow-md shadow-primary/30'
+              : 'bg-surface-elevated text-slate-300'
+          }`}
         >
-          <Sliders size={14} />
+          {dragLock ? <Lock size={13} /> : <Unlock size={13} />}
+          <span>Drag Lock</span>
+        </button>
+        <span className="hidden text-[10px] sm:block">Pinch zoom · Side Pad {sidePadMode}</span>
+        <button
+          aria-label="Trackpad settings"
+          onClick={() => setShowSettings((value) => !value)}
+          className="min-h-11 min-w-11 rounded-lg bg-surface-elevated p-2 text-slate-300"
+        >
+          <Sliders size={15} className="mx-auto" />
         </button>
       </div>
 
-      {/* Expandable Trackpad Settings */}
       {showSettings && (
-        <div className="bg-surface-elevated border border-white/10 rounded-xl p-3 flex flex-col gap-3 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-300">Sensitivity ({sensitivity.toFixed(1)}x)</span>
+        <div className="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-surface-elevated p-3 text-xs sm:grid-cols-4">
+          <label className="flex flex-col gap-1 text-slate-300">
+            Sensitivity {sensitivity.toFixed(1)}×
             <input
               type="range"
               min="0.5"
               max="2.5"
               step="0.1"
               value={sensitivity}
-              onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-              className="w-32 accent-primary"
+              onChange={(event) => setSensitivity(Number(event.target.value))}
+              className="accent-primary"
             />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-300">Natural Scrolling</span>
+          </label>
+          <label className="flex flex-col gap-1 text-slate-300">
+            Side Pad mode
+            <select
+              value={sidePadMode}
+              onChange={(event) => setSidePadMode(event.target.value as SidePadMode)}
+              className="rounded-lg bg-surface px-2 py-1.5"
+            >
+              <option value="scroll">Scroll</option>
+              <option value="volume">Volume</option>
+              <option value="zoom">Zoom</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-slate-300">
+            Placement
+            <select
+              value={sidePadSide}
+              onChange={(event) => setSidePadSide(event.target.value as Side)}
+              className="rounded-lg bg-surface px-2 py-1.5"
+            >
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-slate-300">
+            Width {sidePadWidth}px
             <input
-              type="checkbox"
-              checked={naturalScroll}
-              onChange={(e) => setNaturalScroll(e.target.checked)}
-              className="accent-primary w-4 h-4 rounded"
+              type="range"
+              min="32"
+              max="64"
+              step="2"
+              value={sidePadWidth}
+              onChange={(event) => setSidePadWidth(Number(event.target.value))}
+              className="accent-primary"
             />
-          </div>
+          </label>
         </div>
       )}
 
-      {/* Main Touchpad Surface */}
       <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        className="flex-1 bg-gradient-to-b from-surface/90 to-surface-elevated/90 backdrop-blur-md rounded-2xl border border-white/10 relative overflow-hidden flex items-center justify-center cursor-crosshair active:border-primary/40 transition-colors touch-none"
+        className={`flex min-h-0 flex-1 gap-2 ${sidePadSide === 'left' ? 'flex-row-reverse' : ''}`}
       >
-        <div className="text-center text-slate-500/40 pointer-events-none flex flex-col items-center gap-1">
-          <Hand size={32} className="opacity-30" />
-          <span className="text-xs font-medium tracking-wide">TRACKPAD</span>
-          <span className="text-[10px] opacity-60">
-            1-Finger Move · 1-Tap Click · 2-Finger Scroll
-          </span>
+        <div
+          {...gestures}
+          aria-label="Trackpad touch surface"
+          className="touch-none relative flex flex-1 cursor-crosshair items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-surface/90 to-surface-elevated/90 backdrop-blur-md transition-colors active:border-primary/40"
+        >
+          <div className="pointer-events-none flex flex-col items-center gap-1 text-center text-slate-500/50">
+            <Hand size={32} className="opacity-40" />
+            <span className="text-xs font-medium tracking-wide">TRACKPAD</span>
+            <span className="max-w-64 text-[10px] opacity-70">
+              1-finger move/tap · 2-finger tap/pinch · double-tap drag
+            </span>
+          </div>
         </div>
-
-        {/* Subtle Edge Scroll Guide */}
-        <div className="absolute right-0 top-0 bottom-0 w-8 border-l border-white/5 bg-white/[0.01] pointer-events-none flex items-center justify-center">
-          <div className="h-12 w-0.5 bg-slate-600/30 rounded-full" />
-        </div>
+        {sidePad}
       </div>
 
-      {/* Physical Click Bar */}
-      <div className="grid grid-cols-2 gap-2 h-16">
-        <button
-          onPointerDown={() => handleLeftButton('down')}
-          onPointerUp={() => handleLeftButton('up')}
-          className="flex items-center justify-center gap-2 bg-surface-elevated active:bg-primary border border-white/10 active:border-primary rounded-xl font-medium text-slate-200 active:text-white transition-all shadow-sm active:scale-[0.98] text-sm"
-        >
-          <MousePointer size={16} />
-          <span>Left Click</span>
-        </button>
-
-        <button
-          onPointerDown={() => handleRightButton('down')}
-          onPointerUp={() => handleRightButton('up')}
-          className="flex items-center justify-center gap-2 bg-surface-elevated active:bg-slate-700 border border-white/10 active:border-slate-500 rounded-xl font-medium text-slate-200 active:text-white transition-all shadow-sm active:scale-[0.98] text-sm"
-        >
-          <MousePointer size={16} className="rotate-90" />
-          <span>Right Click</span>
-        </button>
+      <div className="grid h-11 grid-cols-2 gap-2">
+        {(['left', 'right'] as const).map((button) => (
+          <button
+            key={button}
+            onPointerDown={() => clickBar(button, 'down')}
+            onPointerUp={() => clickBar(button, 'up')}
+            onPointerCancel={() => clickBar(button, 'up')}
+            className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-surface-elevated text-xs font-medium capitalize text-slate-200 transition-all active:scale-[0.98] active:bg-primary active:text-white"
+          >
+            <MousePointer size={14} className={button === 'right' ? 'rotate-90' : ''} />
+            {button === 'left' ? 'Left Click' : 'Right Click'}
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRemoteConnection } from './protocol/useRemoteConnection';
 import { Header } from './components/Header';
 import { NavBar, NavRoute } from './components/NavBar';
-import { Trackpad } from './features/trackpad/Trackpad';
+import { ControlView } from './features/control/ControlView';
 import { HybridKeyboard } from './features/keyboard/HybridKeyboard';
 import { MediaRemote } from './features/media/MediaRemote';
 import { PresentationRemote } from './features/presentation/PresentationRemote';
@@ -14,12 +14,20 @@ import { PairingModal } from './components/PairingModal';
 import { AppAwareBanner } from './components/AppAwareBanner';
 import { ArrowLeft, Layers } from 'lucide-react';
 import { PanelDefinition } from '@remote/protocol';
+import { SystemControls } from './features/system/SystemControls';
+import { SearchSheet } from './features/search/SearchSheet';
+import { QuickActionsSheet } from './features/search/QuickActionsSheet';
+import { X } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { connectionState, foregroundApp, mediaState, panels } = useRemoteConnection();
+  const { connectionState, foregroundApp, mediaState, panels, apps, windows } =
+    useRemoteConnection();
   const [activeRoute, setActiveRoute] = useState<NavRoute>('control');
   const [isPairingOpen, setIsPairingOpen] = useState<boolean>(false);
   const [selectedCustomPanel, setSelectedCustomPanel] = useState<PanelDefinition | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleRouteChange = (route: NavRoute) => {
     setActiveRoute(route);
@@ -33,15 +41,17 @@ export const App: React.FC = () => {
 
     switch (activeRoute) {
       case 'control':
-        return <Trackpad />;
+        return <ControlView foregroundApp={foregroundApp} />;
       case 'keyboard':
         return <HybridKeyboard />;
       case 'media':
         return <MediaRemote mediaState={mediaState} />;
       case 'slides':
         return <PresentationRemote />;
-      case 'windows':
+      case 'apps':
         return <WindowManager />;
+      case 'system':
+        return <SystemControls />;
       case 'clipboard':
         return <ClipboardCompanion />;
       case 'files':
@@ -75,7 +85,7 @@ export const App: React.FC = () => {
           </div>
         );
       default:
-        return <Trackpad />;
+        return <ControlView foregroundApp={foregroundApp} />;
     }
   };
 
@@ -84,8 +94,10 @@ export const App: React.FC = () => {
       {/* Top App Header */}
       <Header
         connectionState={connectionState}
-        foregroundApp={foregroundApp}
         onOpenPairing={() => setIsPairingOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenQuickActions={() => setIsQuickActionsOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Custom Panel Back Header */}
@@ -121,6 +133,62 @@ export const App: React.FC = () => {
         onClose={() => setIsPairingOpen(false)}
         connectionState={connectionState}
       />
+      <SearchSheet
+        open={isSearchOpen}
+        apps={apps}
+        windows={windows}
+        panels={panels}
+        onClose={() => setIsSearchOpen(false)}
+        onNavigate={handleRouteChange}
+        onOpenPanel={(panelId) => {
+          const panel = panels.find((candidate) => candidate.id === panelId);
+          if (panel) setSelectedCustomPanel(panel);
+        }}
+      />
+      <QuickActionsSheet
+        open={isQuickActionsOpen}
+        foregroundApp={foregroundApp}
+        onClose={() => setIsQuickActionsOpen(false)}
+        onNavigate={handleRouteChange}
+      />
+      {isSettingsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/70 p-2 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Settings"
+        >
+          <div className="w-full rounded-3xl border border-white/10 bg-surface p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold">Settings</h2>
+                <p className="text-[11px] text-slate-500">
+                  Trackpad and Side Pad preferences are available from Control.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                aria-label="Close settings"
+                className="min-h-11 min-w-11 rounded-xl bg-surface-elevated"
+              >
+                <X size={16} className="mx-auto" />
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('trackpad_sensitivity');
+                localStorage.removeItem('sidepad_width');
+                localStorage.removeItem('sidepad_side');
+                localStorage.removeItem('sidepad_mode');
+                localStorage.removeItem('control_context_percent');
+              }}
+              className="min-h-11 rounded-xl bg-surface-elevated px-3 text-xs font-semibold text-slate-200"
+            >
+              Reset control preferences
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

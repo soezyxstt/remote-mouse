@@ -1,21 +1,86 @@
-// Dual-Mode Identity & Keypair Management
-// Tier 1 (Primary): Hosted HTTPS PWA with full WebCrypto ECDSA/Ed25519 asymmetric signatures
-// Tier 2 (Fallback): Local HTTP Emergency Client with Ephemeral Session tokens (No crypto.subtle requirement)
+// Browser identity and protected-session primitives. WebCrypto is deliberately
+// required: an insecure-context fallback would make post-auth traffic readable
+// and forgeable by any peer on the LAN.
 
 const CLIENT_ID_KEY = 'remote_mouse_client_id';
 const CLIENT_NAME_KEY = 'remote_mouse_client_name';
-const CLIENT_PUBKEY_KEY = 'remote_mouse_client_pubkey';
 const DB_NAME = 'remote_mouse_keystore';
 const STORE_NAME = 'keys';
 
-export type AuthTier = 'hosted_pwa_webcrypto' | 'local_http_ephemeral';
+export type AuthTier = 'hosted_pwa_webcrypto';
 
 export interface ClientIdentity {
   tier: AuthTier;
   clientId: string;
   clientName: string;
-  publicKey: string; // Base64 public key (ECDSA/Ed25519) or ephemeral identifier
-  signChallenge?: (nonce: string) => Promise<string>;
+  publicKey: string;
+  signChallenge: (transcript: string) => Promise<string>;
+}
+
+export interface EphemeralKeyAgreement {
+  privateKey: CryptoKey;
+  publicKeyBase64: string;
+  clientNonce: string;
+}
+
+export interface EncryptedFramePayload {
+  seq: number;
+  nonce: string;
+  ciphertext: string;
+}
+
+export class BrowserSessionCipher {
+  private sendSequence = 0;
+  private receivedSequence = 0;
+  private receivedNoncePrefix: string | null = null;
+  private readonly sendNoncePrefix = crypto.getRandomValues(new Uint8Array(4));
+
+  constructor(
+    private readonly receiveKey: CryptoKey,
+    private readonly sendKey: CryptoKey
+  ) {}
+
+  async encrypt(plaintext: Uint8Array): Promise<EncryptedFramePayload> {
+    this.sendSequence += 1;
+    const nonce = new Uint8Array(12);
+    nonce.set(this.sendNoncePrefix, 0);
+    new DataView(nonce.buffer).setBigUint64(4, BigInt(this.sendSequence), false);
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: toArrayBuffer(nonce) },
+      this.sendKey,
+      toArrayBuffer(plaintext)
+    );
+
+    return {
+      seq: this.sendSequence,
+      nonce: arrayBufferToBase64(nonce),
+      ciphertext: arrayBufferToBase64(ciphertext),
+    };
+  }
+
+  async decrypt(payload: EncryptedFramePayload): Promise<Uint8Array> {
+    if (!Number.isSafeInteger(payload.seq) || payload.seq !== this.receivedSequence + 1) {
+      throw new Error('Encrypted frame is replayed or out of order');
+    }
+
+    const nonce = base64ToBytes(payload.nonce);
+    if (nonce.byteLength !== 12) throw new Error('Encrypted frame nonce is invalid');
+    const nonceSequence = new DataView(toArrayBuffer(nonce)).getBigUint64(4, false);
+    if (nonceSequence !== BigInt(payload.seq)) throw new Error('Encrypted frame nonce is invalid');
+    const prefix = Array.from(nonce.slice(0, 4)).join(':');
+    if (this.receivedNoncePrefix !== null && prefix !== this.receivedNoncePrefix) {
+      throw new Error('Encrypted frame nonce prefix changed');
+    }
+    const ciphertext = base64ToBytes(payload.ciphertext);
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: toArrayBuffer(nonce) },
+      this.receiveKey,
+      toArrayBuffer(ciphertext)
+    );
+    this.receivedSequence = payload.seq;
+    this.receivedNoncePrefix = prefix;
+    return new Uint8Array(plaintext);
+  }
 }
 
 export async function resolveClientIdentity(): Promise<ClientIdentity> {
@@ -37,43 +102,105 @@ export async function resolveClientIdentity(): Promise<ClientIdentity> {
     localStorage.setItem(CLIENT_NAME_KEY, clientName);
   }
 
-  // Tier 1: Secure Context (Hosted HTTPS PWA) -> Full WebCrypto ECDSA Keypair
-  if (isSecure) {
-    try {
-      const keypair = await getOrCreateWebCryptoKeypair();
-      return {
-        tier: 'hosted_pwa_webcrypto',
-        clientId,
-        clientName,
-        publicKey: keypair.publicKeyBase64,
-        signChallenge: async (nonce: string) => {
-          const enc = new TextEncoder();
-          const signature = await window.crypto.subtle.sign(
-            { name: 'ECDSA', hash: { name: 'SHA-256' } },
-            keypair.privateKey,
-            enc.encode(nonce)
-          );
-          return arrayBufferToBase64(signature);
-        },
-      };
-    } catch (e) {
-      console.warn('WebCrypto key generation failed, falling back to ephemeral mode', e);
-    }
+  if (!isSecure) {
+    throw new Error(
+      'Secure pairing requires HTTPS (or localhost) with WebCrypto. Plain HTTP LAN control is disabled.'
+    );
   }
 
-  // Tier 2: Insecure Context (Local HTTP LAN fallback http://192.168.x.x) -> Ephemeral Token Session
-  let ephemeralId = localStorage.getItem(CLIENT_PUBKEY_KEY);
-  if (!ephemeralId) {
-    ephemeralId = 'ephemeral_' + generateRandomHex(16);
-    localStorage.setItem(CLIENT_PUBKEY_KEY, ephemeralId);
-  }
-
+  const keypair = await getOrCreateWebCryptoKeypair();
   return {
-    tier: 'local_http_ephemeral',
+    tier: 'hosted_pwa_webcrypto',
     clientId,
     clientName,
-    publicKey: ephemeralId,
+    publicKey: keypair.publicKeyBase64,
+    signChallenge: async (transcript: string) => {
+      const signature = await window.crypto.subtle.sign(
+        { name: 'ECDSA', hash: { name: 'SHA-256' } },
+        keypair.privateKey,
+        new TextEncoder().encode(transcript)
+      );
+      return arrayBufferToBase64(signature);
+    },
   };
+}
+
+export async function createEphemeralKeyAgreement(): Promise<EphemeralKeyAgreement> {
+  const keyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, [
+    'deriveBits',
+  ]);
+  const publicKey = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+  const clientNonceBytes = crypto.getRandomValues(new Uint8Array(32));
+  return {
+    privateKey: keyPair.privateKey,
+    publicKeyBase64: arrayBufferToBase64(publicKey),
+    clientNonce: arrayBufferToBase64(clientNonceBytes),
+  };
+}
+
+export async function deriveSessionCipher(
+  agreement: EphemeralKeyAgreement,
+  serverPublicKeyBase64: string,
+  sessionSaltBase64: string
+): Promise<BrowserSessionCipher> {
+  const serverPublicKey = await crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(base64ToBytes(serverPublicKeyBase64)),
+    { name: 'ECDH', namedCurve: 'P-256' },
+    false,
+    []
+  );
+  const sharedSecret = await crypto.subtle.deriveBits(
+    { name: 'ECDH', public: serverPublicKey },
+    agreement.privateKey,
+    256
+  );
+  const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveBits']);
+  const keyMaterial = await crypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: toArrayBuffer(base64ToBytes(sessionSaltBase64)),
+      info: new TextEncoder().encode('remote-companion-v1-bidirectional-keys'),
+    },
+    hkdfKey,
+    512
+  );
+  const bytes = new Uint8Array(keyMaterial);
+  const clientToServer = await crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(bytes.slice(0, 32)),
+    'AES-GCM',
+    false,
+    ['encrypt']
+  );
+  const serverToClient = await crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(bytes.slice(32, 64)),
+    'AES-GCM',
+    false,
+    ['decrypt']
+  );
+  return new BrowserSessionCipher(serverToClient, clientToServer);
+}
+
+export function buildSessionTranscript(input: {
+  clientId: string;
+  challengeNonce: string;
+  clientNonce: string;
+  clientEcdhPublicKey: string;
+  serverEcdhPublicKey: string;
+  sessionSalt: string;
+}): string {
+  return [
+    'remote-companion-v1',
+    input.clientId,
+    input.challengeNonce,
+    input.clientNonce,
+    input.clientEcdhPublicKey,
+    input.serverEcdhPublicKey,
+    input.sessionSalt,
+  ].join('\n');
 }
 
 interface WebCryptoKeypairWrapper {
@@ -142,13 +269,26 @@ function saveKeyToDB(db: IDBDatabase, key: string, val: WebCryptoKeypairWrapper)
   });
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function arrayBufferToBase64(buffer: ArrayBuffer | ArrayBufferView): string {
+  const raw = ArrayBuffer.isView(buffer)
+    ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+    : new Uint8Array(buffer);
   let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < raw.byteLength; i++) {
+    binary += String.fromCharCode(raw[i]);
   }
   return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.slice().buffer as ArrayBuffer;
 }
 
 function generateRandomHex(length: number): string {

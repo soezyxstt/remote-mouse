@@ -30,7 +30,7 @@ export const ClipboardCompanion: React.FC = () => {
 
   const handleSendToPc = () => {
     if (inputText) {
-      globalRemoteClient.send('clipboard.set', { text: inputText });
+      globalRemoteClient.execute({ type: 'clipboard.set', text: inputText });
       setHistory((prev) => [inputText, ...prev.filter((item) => item !== inputText)]);
       setInputText('');
       setIsSent(true);
@@ -159,7 +159,7 @@ export const ClipboardCompanion: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      globalRemoteClient.send('clipboard.set', { text: item });
+                      globalRemoteClient.execute({ type: 'clipboard.set', text: item });
                       setIsSent(true);
                       setTimeout(() => setIsSent(false), 2000);
                     }}

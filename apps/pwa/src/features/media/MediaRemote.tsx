@@ -1,7 +1,8 @@
 import React from 'react';
-import { MediaSessionState } from '@remote/protocol';
+import { Action, MediaSessionState } from '@remote/protocol';
 import { globalRemoteClient } from '../../protocol/client';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Music } from 'lucide-react';
+import { MiniTrackpad } from '../trackpad/MiniTrackpad';
 
 interface MediaRemoteProps {
   mediaState: MediaSessionState | null;
@@ -21,12 +22,15 @@ export const MediaRemote: React.FC<MediaRemoteProps> = ({ mediaState }) => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const handleCommand = (action: string, value?: number) => {
-    globalRemoteClient.send('media.command', { action, value });
+  const handleCommand = (
+    action: Extract<Action, { type: 'media.command' }>['action'],
+    value?: number
+  ) => {
+    globalRemoteClient.execute({ type: 'media.command', action, value });
   };
 
   return (
-    <div className="flex flex-col h-full w-full p-4 gap-4 justify-between select-none">
+    <div className="flex flex-col h-full w-full p-4 gap-4 justify-between overflow-y-auto select-none">
       {/* Media Artwork & Title */}
       <div className="flex flex-col items-center justify-center flex-1 gap-4">
         <div className="w-48 h-48 rounded-2xl bg-gradient-to-tr from-surface-elevated to-primary/20 border border-white/10 flex items-center justify-center shadow-xl shadow-black/40">
@@ -100,6 +104,8 @@ export const MediaRemote: React.FC<MediaRemoteProps> = ({ mediaState }) => {
           className="flex-1 accent-primary h-1.5 rounded-lg bg-surface-elevated"
         />
       </div>
+
+      <MiniTrackpad sidePadMode="volume" />
     </div>
   );
 };

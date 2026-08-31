@@ -27,6 +27,8 @@ export const FIXTURE_SESSION_READY: SessionReadyData = {
     'power.sleep',
   ],
   activeDisplayCount: 2,
+  serverEcdhPublicKey: 'fixture-only',
+  sessionSalt: 'fixture-only',
 };
 
 export const FIXTURE_FOREGROUND_BROWSER: ForegroundAppState = {
@@ -59,6 +61,9 @@ export const FIXTURE_DISPLAYS: DisplayInfo[] = [
     width: 2560,
     height: 1440,
     isPrimary: true,
+    x: 0,
+    y: 0,
+    scaleFactor: 1.5,
   },
   {
     index: 1,
@@ -66,6 +71,9 @@ export const FIXTURE_DISPLAYS: DisplayInfo[] = [
     width: 3840,
     height: 2160,
     isPrimary: false,
+    x: 2560,
+    y: 0,
+    scaleFactor: 1,
   },
 ];
 

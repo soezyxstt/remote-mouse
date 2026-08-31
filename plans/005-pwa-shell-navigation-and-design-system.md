@@ -39,7 +39,8 @@ Requires Stages 002 and 003. Before editing, inspect and preserve any user chang
 
 ## Completion record
 
-- Status: `VERIFIED`
+- Status: `IN_PROGRESS`
 - Commit and evidence: `checkpoint-stage-005` / `artifacts/overhaul/stage-005/run-001/execution-log.md`
 - Accessibility report: Minimum 44px touch targets, role="tab", aria-selected, safe-area insets verified
 - Known browser differences: None (PWA responsive across Safari, Chrome, and desktop viewports)
+- Audit correction: navigation/header/Control were remediated and browser smoke screenshots were reviewed, but device switching, modal focus/back behavior, saved nav order, axe, and physical Safari/Chrome evidence remain open.

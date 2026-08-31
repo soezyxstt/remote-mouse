@@ -33,7 +33,8 @@ Requires Stage 009.
 
 ## Completion record
 
-- Status: `VERIFIED`
+- Status: `IN_PROGRESS`
 - Schema version/migrations: Version 1 schema with grid-bounded components and action validation
 - Commit and QA evidence: `checkpoint-stage-010` / `artifacts/overhaul/stage-010/run-001/execution-log.md`
 - Known component limitations: Non-destructive representative actions verified
+- Audit correction: schema/renderer foundations exist, but complete component behavior, tap/hold binding, persistent desktop builder, import/export, migration, app linkage, and physical QA remain open.

@@ -7,7 +7,7 @@ import { globalRemoteClient } from '../../apps/pwa/src/protocol/client';
 
 describe('Trackpad & Hybrid Keyboard Feature Tests', () => {
   it('renders Trackpad with left/right buttons and drag lock toggle', () => {
-    const sendSpy = vi.spyOn(globalRemoteClient, 'send');
+    const executeSpy = vi.spyOn(globalRemoteClient, 'execute');
     render(<Trackpad />);
 
     expect(screen.getByText('TRACKPAD')).toBeInTheDocument();
@@ -16,27 +16,30 @@ describe('Trackpad & Hybrid Keyboard Feature Tests', () => {
 
     const leftBtn = screen.getByText('Left Click');
     fireEvent.pointerDown(leftBtn);
-    expect(sendSpy).toHaveBeenCalledWith('input.pointer.button', {
+    expect(executeSpy).toHaveBeenCalledWith({
+      type: 'pointer.button',
       button: 'left',
       state: 'down',
     });
 
     fireEvent.pointerUp(leftBtn);
-    expect(sendSpy).toHaveBeenCalledWith('input.pointer.button', {
+    expect(executeSpy).toHaveBeenCalledWith({
+      type: 'pointer.button',
       button: 'left',
       state: 'up',
     });
 
     const dragLockBtn = screen.getByText('Drag Lock');
     fireEvent.click(dragLockBtn);
-    expect(sendSpy).toHaveBeenCalledWith('input.pointer.button', {
+    expect(executeSpy).toHaveBeenCalledWith({
+      type: 'pointer.button',
       button: 'left',
       state: 'down',
     });
   });
 
   it('renders HybridKeyboard with text stream input and modifier toggles', () => {
-    const sendSpy = vi.spyOn(globalRemoteClient, 'send');
+    const executeSpy = vi.spyOn(globalRemoteClient, 'execute');
     render(<HybridKeyboard />);
 
     expect(screen.getByPlaceholderText(/type to send/i)).toBeInTheDocument();
@@ -50,7 +53,8 @@ describe('Trackpad & Hybrid Keyboard Feature Tests', () => {
     // Send key 'c' with modifier
     const escBtn = screen.getByText('Esc');
     fireEvent.click(escBtn);
-    expect(sendSpy).toHaveBeenCalledWith('keyboard.key', {
+    expect(executeSpy).toHaveBeenCalledWith({
+      type: 'keyboard.key',
       key: 'Escape',
       state: 'tap',
       modifiers: ['ctrl'],

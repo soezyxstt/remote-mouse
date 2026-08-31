@@ -17,6 +17,8 @@ impl PermissionChecker {
             "presentation.command" => Some(Capability::PresentationControl),
             "apps.launch" => Some(Capability::AppsLaunch),
             "windows.action" => Some(Capability::WindowsControl),
+            "windows.list" | "displays.list" => Some(Capability::WindowsControl),
+            "apps.list" => Some(Capability::AppsLaunch),
             "macro.execute" => Some(Capability::AutomationExecute),
             "clipboard.get" => Some(Capability::ClipboardRead),
             "clipboard.set" => Some(Capability::ClipboardWrite),

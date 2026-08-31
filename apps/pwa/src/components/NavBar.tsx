@@ -8,10 +8,19 @@ import {
   ClipboardCopy,
   FolderTree,
   Sliders,
+  Settings,
 } from 'lucide-react';
 
 export type NavRoute =
-  'control' | 'keyboard' | 'media' | 'slides' | 'windows' | 'clipboard' | 'files' | 'panels';
+  | 'control'
+  | 'keyboard'
+  | 'apps'
+  | 'panels'
+  | 'clipboard'
+  | 'files'
+  | 'media'
+  | 'slides'
+  | 'system';
 
 interface NavBarProps {
   activeRoute: NavRoute;
@@ -20,14 +29,15 @@ interface NavBarProps {
 
 export const NavBar: React.FC<NavBarProps> = ({ activeRoute, onChangeRoute }) => {
   const tabs: Array<{ id: NavRoute; label: string; icon: React.ReactNode }> = [
-    { id: 'control', label: 'Trackpad', icon: <MousePointer size={18} /> },
+    { id: 'control', label: 'Control', icon: <MousePointer size={18} /> },
     { id: 'keyboard', label: 'Keyboard', icon: <Keyboard size={18} /> },
-    { id: 'media', label: 'Media', icon: <Music size={18} /> },
-    { id: 'slides', label: 'Slides', icon: <Presentation size={18} /> },
-    { id: 'windows', label: 'Windows', icon: <LayoutGrid size={18} /> },
+    { id: 'apps', label: 'Apps', icon: <LayoutGrid size={18} /> },
+    { id: 'panels', label: 'Panels', icon: <Sliders size={18} /> },
     { id: 'clipboard', label: 'Clipboard', icon: <ClipboardCopy size={18} /> },
     { id: 'files', label: 'Files', icon: <FolderTree size={18} /> },
-    { id: 'panels', label: 'Panels', icon: <Sliders size={18} /> },
+    { id: 'media', label: 'Media', icon: <Music size={18} /> },
+    { id: 'slides', label: 'Slides', icon: <Presentation size={18} /> },
+    { id: 'system', label: 'System', icon: <Settings size={18} /> },
   ];
 
   return (

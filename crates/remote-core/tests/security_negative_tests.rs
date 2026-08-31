@@ -1,3 +1,4 @@
+use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use platform_mock::MockPlatform;
@@ -10,6 +11,36 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message as TungsteniteMessage;
+
+fn protected_wire(cipher: &mut SessionCipher, inner: &MessageEnvelope) -> String {
+    let payload = cipher.encrypt(&serde_json::to_vec(inner).unwrap());
+    serde_json::to_string(&MessageEnvelope {
+        v: 1,
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: 1000,
+        msg_type: "secure.encrypted_frame".to_string(),
+        data: serde_json::to_value(payload).unwrap(),
+    })
+    .unwrap()
+}
+
+fn cipher_from_ready(agreement: KeyAgreement, response: TungsteniteMessage) -> SessionCipher {
+    let envelope: MessageEnvelope = serde_json::from_str(&response.into_text().unwrap()).unwrap();
+    assert_eq!(envelope.msg_type, "auth.session_ready");
+    let ready: SessionReadyData = serde_json::from_value(envelope.data).unwrap();
+    let salt = BASE64.decode(ready.session_salt).unwrap();
+    agreement
+        .derive_session_cipher(&ready.server_ecdh_public_key, &salt, false)
+        .unwrap()
+}
+
+fn decrypt_wire(cipher: &mut SessionCipher, response: TungsteniteMessage) -> MessageEnvelope {
+    let outer: MessageEnvelope = serde_json::from_str(&response.into_text().unwrap()).unwrap();
+    assert_eq!(outer.msg_type, "secure.encrypted_frame");
+    let payload = serde_json::from_value(outer.data).unwrap();
+    let plaintext = cipher.decrypt(&payload).unwrap();
+    serde_json::from_slice(&plaintext).unwrap()
+}
 
 #[test]
 fn test_ecdh_key_agreement_and_session_cipher_establishment() {
@@ -85,6 +116,8 @@ async fn test_negative_unauthorized_capability_denial() {
     let (mut write, mut read) = ws_stream.split();
 
     // 1. Pair device
+    let client_agreement = KeyAgreement::new();
+    let client_ecdh_public_key = client_agreement.public_key_b64.clone();
     let pair_msg = MessageEnvelope {
         v: 1,
         id: "pair-neg-1".to_string(),
@@ -95,6 +128,9 @@ async fn test_negative_unauthorized_capability_denial() {
             client_name: "Restricted Phone".to_string(),
             token: test_token,
             public_key: "dGVzdF9wdWJsaWNfa2V5".to_string(),
+            ecdh_public_key: client_ecdh_public_key,
+            client_nonce: BASE64.encode([1_u8; 32]),
+            auth_tier: "hosted_pwa_webcrypto".to_string(),
         })
         .unwrap(),
     };
@@ -105,7 +141,8 @@ async fn test_negative_unauthorized_capability_denial() {
         .await
         .unwrap();
 
-    let _resp = read.next().await.unwrap().unwrap();
+    let ready = read.next().await.unwrap().unwrap();
+    let mut client_cipher = cipher_from_ready(client_agreement, ready);
 
     // 2. Strip capabilities down to mouse only
     {
@@ -124,15 +161,15 @@ async fn test_negative_unauthorized_capability_denial() {
         data: serde_json::json!({}),
     };
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&file_req).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &file_req,
+        )))
         .await
         .unwrap();
 
     let reply = read.next().await.unwrap().unwrap();
-    let reply_text = reply.into_text().unwrap();
-    let reply_env: MessageEnvelope = serde_json::from_str(&reply_text).unwrap();
+    let reply_env = decrypt_wire(&mut client_cipher, reply);
 
     // Server must reject with error
     assert_eq!(reply_env.msg_type, "error");
@@ -181,6 +218,8 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
             "clientName": "LAN Browser",
             "token": test_token,
             "publicKey": "ephemeral_lan_key",
+            "ecdhPublicKey": KeyAgreement::new().public_key_b64,
+            "clientNonce": BASE64.encode([9_u8; 32]),
             "authTier": "local_http_ephemeral"
         }),
     };
@@ -193,90 +232,12 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
 
     let resp = read.next().await.unwrap().unwrap();
     let resp_env: MessageEnvelope = serde_json::from_str(&resp.into_text().unwrap()).unwrap();
-    assert_eq!(resp_env.msg_type, "auth.session_ready");
+    assert_eq!(resp_env.msg_type, "auth.error");
 
-    // 2. Mouse move & Media & Presentation should SUCCEED
-    let move_msg = MessageEnvelope {
-        v: 1,
-        id: "move-1".to_string(),
-        timestamp: 1001,
-        msg_type: "input.pointer.delta".to_string(),
-        data: serde_json::to_value(PointerDeltaData {
-            dx: 10.0,
-            dy: 10.0,
-            dt: None,
-        })
-        .unwrap(),
-    };
-    write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&move_msg).unwrap(),
-        ))
-        .await
-        .unwrap();
-
-    let pres_msg = MessageEnvelope {
-        v: 1,
-        id: "pres-1".to_string(),
-        timestamp: 1002,
-        msg_type: "presentation.command".to_string(),
-        data: serde_json::to_value(PresentationCommandData {
-            action: "next".to_string(),
-            slide_index: None,
-        })
-        .unwrap(),
-    };
-    write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&pres_msg).unwrap(),
-        ))
-        .await
-        .unwrap();
-
-    // 3. Raw Keyboard MUST BE DENIED for ephemeral tier (P0 Security Requirement)
-    let key_req = MessageEnvelope {
-        v: 1,
-        id: "key-req-eph".to_string(),
-        timestamp: 1003,
-        msg_type: "keyboard.key".to_string(),
-        data: serde_json::to_value(KeyActionData {
-            key: "r".to_string(),
-            state: "tap".to_string(),
-            modifiers: Some(vec!["win".to_string()]),
-        })
-        .unwrap(),
-    };
-    write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&key_req).unwrap(),
-        ))
-        .await
-        .unwrap();
-
-    let key_reply = read.next().await.unwrap().unwrap();
-    let key_env: MessageEnvelope = serde_json::from_str(&key_reply.into_text().unwrap()).unwrap();
-    assert_eq!(key_env.msg_type, "error");
-    assert!(key_env.data.get("error").is_some());
-
-    // 4. File browsing MUST BE DENIED
-    let file_req = MessageEnvelope {
-        v: 1,
-        id: "file-req-eph".to_string(),
-        timestamp: 1004,
-        msg_type: "files.list_roots".to_string(),
-        data: serde_json::json!({}),
-    };
-    write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&file_req).unwrap(),
-        ))
-        .await
-        .unwrap();
-
-    let file_reply = read.next().await.unwrap().unwrap();
-    let file_env: MessageEnvelope = serde_json::from_str(&file_reply.into_text().unwrap()).unwrap();
-    assert_eq!(file_env.msg_type, "error");
-    assert!(file_env.data.get("error").is_some());
+    assert!(resp_env.data["error"]
+        .as_str()
+        .unwrap()
+        .contains("Secure WebCrypto"));
 }
 
 #[tokio::test]
@@ -310,7 +271,9 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
     let (ws_stream, _) = connect_async(&url).await.expect("connect failed");
     let (mut write, mut read) = ws_stream.split();
 
-    let client_pub_key = "dGVzdF9wdWJsaWNfa2V5X3NlY3VyZQ==";
+    let identity_public_key = "dGVzdF9wdWJsaWNfa2V5X3NlY3VyZQ==";
+    let client_agreement = KeyAgreement::new();
+    let client_ecdh_public_key = client_agreement.public_key_b64.clone();
 
     // 1. Pair
     let pair_msg = MessageEnvelope {
@@ -322,7 +285,10 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
             client_id: "phone_encrypted".to_string(),
             client_name: "Encrypted Phone".to_string(),
             token: test_token.clone(),
-            public_key: client_pub_key.to_string(),
+            public_key: identity_public_key.to_string(),
+            ecdh_public_key: client_ecdh_public_key,
+            client_nonce: BASE64.encode([2_u8; 32]),
+            auth_tier: "hosted_pwa_webcrypto".to_string(),
         })
         .unwrap(),
     };
@@ -333,11 +299,10 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
         .await
         .unwrap();
 
-    let _resp = read.next().await.unwrap().unwrap();
+    let ready = read.next().await.unwrap().unwrap();
 
-    // 2. Client sets up matching SessionCipher (is_server: false)
-    let mut client_cipher =
-        SessionCipher::from_shared_secret(client_pub_key.as_bytes(), test_token.as_bytes(), false);
+    // 2. Client derives matching directional keys from the real ECDH secret.
+    let mut client_cipher = cipher_from_ready(client_agreement, ready);
 
     // 3. Encrypt pointer delta message inside AES-GCM frame
     let inner_delta = MessageEnvelope {
@@ -398,6 +363,25 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
         assert_eq!(state_guard.cursor_pos, (533.0, 488.0));
         assert_eq!(state_guard.pointer_history.len(), 1);
     }
+
+    // 5. Plaintext application messages are rejected after session_ready.
+    let plaintext_delta = MessageEnvelope {
+        v: 1,
+        id: "plaintext-bypass".to_string(),
+        timestamp: 1003,
+        msg_type: "input.pointer.delta".to_string(),
+        data: serde_json::json!({ "dx": 100.0, "dy": 100.0 }),
+    };
+    write
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&plaintext_delta).unwrap(),
+        ))
+        .await
+        .unwrap();
+    let denial = read.next().await.unwrap().unwrap();
+    let denial_env: MessageEnvelope = serde_json::from_str(&denial.into_text().unwrap()).unwrap();
+    assert_eq!(denial_env.msg_type, "auth.error");
+    assert_eq!(mock.state.lock().unwrap().pointer_history.len(), 1);
 }
 
 #[tokio::test]
@@ -443,6 +427,9 @@ async fn test_negative_reused_pairing_token_denial() {
                 client_name: "Phone 1".to_string(),
                 token: test_token.clone(),
                 public_key: "key1".to_string(),
+                ecdh_public_key: KeyAgreement::new().public_key_b64,
+                client_nonce: BASE64.encode([3_u8; 32]),
+                auth_tier: "hosted_pwa_webcrypto".to_string(),
             })
             .unwrap(),
         };
@@ -471,6 +458,9 @@ async fn test_negative_reused_pairing_token_denial() {
                 client_name: "Phone 2".to_string(),
                 token: test_token,
                 public_key: "key2".to_string(),
+                ecdh_public_key: KeyAgreement::new().public_key_b64,
+                client_nonce: BASE64.encode([4_u8; 32]),
+                auth_tier: "hosted_pwa_webcrypto".to_string(),
             })
             .unwrap(),
         };
@@ -528,6 +518,9 @@ async fn test_negative_input_safety_release_on_disconnect() {
             client_name: "Phone Safety".to_string(),
             token: test_token,
             public_key: "key".to_string(),
+            ecdh_public_key: KeyAgreement::new().public_key_b64,
+            client_nonce: BASE64.encode([5_u8; 32]),
+            auth_tier: "hosted_pwa_webcrypto".to_string(),
         })
         .unwrap(),
     };
@@ -665,6 +658,9 @@ async fn test_negative_binary_pointer_capability_denial() {
             client_name: "Restricted Binary Phone".to_string(),
             token: test_token,
             public_key: "dGVzdF9wdWJsaWNfa2V5".to_string(),
+            ecdh_public_key: KeyAgreement::new().public_key_b64,
+            client_nonce: BASE64.encode([6_u8; 32]),
+            auth_tier: "hosted_pwa_webcrypto".to_string(),
         })
         .unwrap(),
     };
@@ -754,12 +750,17 @@ async fn test_negative_ecdsa_forged_signature_denial() {
     let (mut write, mut read) = ws_stream.split();
 
     // 1. Request login challenge
+    let attacker_agreement = KeyAgreement::new();
     let challenge_req = MessageEnvelope {
         v: 1,
         id: "chal-req-1".to_string(),
         timestamp: 1000,
         msg_type: "auth.login_challenge".to_string(),
-        data: serde_json::json!({ "nonce": "phone_ecdsa" }),
+        data: serde_json::json!({
+            "clientId": "phone_ecdsa",
+            "ecdhPublicKey": attacker_agreement.public_key_b64,
+            "clientNonce": BASE64.encode([8_u8; 32]),
+        }),
     };
     write
         .send(TungsteniteMessage::Text(

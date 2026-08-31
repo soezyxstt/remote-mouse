@@ -87,6 +87,7 @@ pub struct SessionCipher {
     rx_cipher: Aes256Gcm,
     tx_cipher: Aes256Gcm,
     session_prefix: [u8; 4],
+    received_prefix: Option<[u8; 4]>,
     last_received_seq: u64,
     current_send_seq: u64,
 }
@@ -125,6 +126,7 @@ impl SessionCipher {
             rx_cipher,
             tx_cipher,
             session_prefix,
+            received_prefix: None,
             last_received_seq: 0,
             current_send_seq: 0,
         }
@@ -159,7 +161,7 @@ impl SessionCipher {
     /// Decrypt and authenticate incoming frame, enforcing monotonic sequence numbers
     pub fn decrypt(&mut self, payload: &EncryptedFramePayload) -> Result<Vec<u8>, CryptoError> {
         // Monotonic sequence check for anti-replay
-        if payload.seq <= self.last_received_seq {
+        if payload.seq != self.last_received_seq + 1 {
             return Err(CryptoError::ReplayDetected {
                 expected: self.last_received_seq + 1,
                 received: payload.seq,
@@ -170,6 +172,18 @@ impl SessionCipher {
             .decode(&payload.nonce)
             .map_err(|_| CryptoError::Base64Error)?;
         if nonce_bytes.len() != 12 {
+            return Err(CryptoError::DecryptionFailed);
+        }
+        if nonce_bytes[4..12] != payload.seq.to_be_bytes() {
+            return Err(CryptoError::DecryptionFailed);
+        }
+        let prefix: [u8; 4] = nonce_bytes[0..4]
+            .try_into()
+            .map_err(|_| CryptoError::DecryptionFailed)?;
+        if self
+            .received_prefix
+            .is_some_and(|expected| expected != prefix)
+        {
             return Err(CryptoError::DecryptionFailed);
         }
         let nonce = Nonce::from_slice(&nonce_bytes);
@@ -185,6 +199,7 @@ impl SessionCipher {
 
         // Update sequence on successful authentication
         self.last_received_seq = payload.seq;
+        self.received_prefix.get_or_insert(prefix);
         Ok(plaintext)
     }
 }

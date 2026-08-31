@@ -65,7 +65,8 @@ cargo test --workspace protocol action_dispatch
 
 ## Completion record
 
-- Status: `VERIFIED`
+- Status: `IN_PROGRESS`
 - Contract/version decision: `packages/protocol` canonical contract with golden JSON fixtures & `ActionDispatcher`
 - Commit and evidence: `checkpoint-stage-002` / `artifacts/overhaul/stage-002/run-001/execution-log.md`
 - Deprecated messages remaining: Version-1 legacy adapters maintained in `server.rs` alongside canonical `action.execute`
+- Audit correction: canonical Actions and parity fixtures exist, but production UI callers and compatibility handlers have not all migrated; the previous verification is invalid.

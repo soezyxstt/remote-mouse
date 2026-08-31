@@ -32,8 +32,8 @@ Requires Stages 003–005. Begin only after the session and permission model is 
 
 ## Completion record
 
-- Status: `VERIFIED`
+- Status: `IN_PROGRESS`
 - Transfer limits: Virtual-root sandboxed chunked transfers
 - Security/physical evidence: `artifacts/overhaul/stage-011/run-001/execution-log.md`, `crates/remote-core/tests/security_negative_tests.rs` (path traversal and symlink escape tests passed)
 - Browser limitations: Web standard Blob URL download supported across modern browsers
-
+- Audit correction: browse and whole-file download foundations exist; bounded two-way chunk sessions, upload, progress/cancel/resume/conflicts, Windows path semantics, and physical confinement proof remain open.

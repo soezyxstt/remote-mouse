@@ -9,7 +9,8 @@ test.describe('PWA Navigation & Feature Flow', () => {
     if (page.url().includes('4174')) test.skip();
     await page.goto('http://127.0.0.1:4173');
     await expect(page.locator('header')).toBeVisible();
-    await expect(page.getByRole('tab', { name: /trackpad/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /control/i })).toBeVisible();
+    await expect(page.getByLabel('Trackpad touch surface')).toBeVisible();
   });
 
   test('switches tabs across scrollable navigation rail', async ({ page }) => {
@@ -28,12 +29,12 @@ test.describe('PWA Navigation & Feature Flow', () => {
     await page.getByRole('tab', { name: /slides/i }).click();
     await expect(page.getByRole('tab', { name: /slides/i })).toBeVisible();
 
-    // 4. Switch to Windows
-    await page.getByRole('tab', { name: /windows/i }).click();
-    await expect(page.getByRole('tab', { name: /windows/i })).toBeVisible();
+    // 4. Switch to Apps
+    await page.getByRole('tab', { name: /apps/i }).click();
+    await expect(page.getByPlaceholder(/filter apps and windows/i)).toBeVisible();
 
-    // 5. Switch back to Trackpad
-    await page.getByRole('tab', { name: /trackpad/i }).click();
-    await expect(page.locator('header')).toBeVisible();
+    // 5. Switch back to Control
+    await page.getByRole('tab', { name: /control/i }).click();
+    await expect(page.getByLabel('Trackpad touch surface')).toBeVisible();
   });
 });

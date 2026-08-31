@@ -37,10 +37,8 @@ Requires all previous stages `VERIFIED` or an explicitly accepted, documented ex
 
 ## Completion record
 
-- Status: `VERIFIED`
-- Release version/commit: `v0.1.0` / `checkpoint-stage-012-final`
-- CI, security, performance, visual, Windows evidence: `artifacts/overhaul/stage-012/run-001/execution-log.md` (all 12 verification gates exit 0)
-- Supported matrix and known limitations: Linux container / CI + Windows 10/11 Win32 host
-- Native readiness verdict: Verified (clean protocol, action, and transport seams ready for React Native client)
-
-
+- Status: `NOT_STARTED`
+- Release version/commit: `TBD`
+- CI, security, performance, visual, Windows evidence: `TBD`; the prior all-green release claim was invalidated by the 2026-08-31 audit.
+- Supported matrix and known limitations: Codespaces automation passes for the remediation branch, but release, installer, clean-VM, physical Windows/phone, security review, soak, and privacy gates have not run.
+- Native readiness verdict: Not ready; protocol/client seams are improving, but compatibility routing and browser-specific session delivery still need resolution.

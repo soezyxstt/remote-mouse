@@ -3,7 +3,12 @@ import { test, expect } from '@playwright/test';
 test.describe('Visual Surface Smoke & Viewport Assertions', () => {
   test('renders PWA deterministically at target viewport without horizontal overflow', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const browserErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') browserErrors.push(message.text());
+    });
+    page.on('pageerror', (error) => browserErrors.push(error.message));
     await page.goto('http://127.0.0.1:4173');
     await page.addStyleTag({
       content: `
@@ -22,9 +27,19 @@ test.describe('Visual Surface Smoke & Viewport Assertions', () => {
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+    expect(browserErrors).toEqual([]);
+    await page.screenshot({
+      path: `artifacts/overhaul/remediation-2026-08-31/browser/${testInfo.project.name}-pwa.png`,
+      fullPage: true,
+    });
   });
 
-  test('renders Desktop Companion without layout overflow', async ({ page }) => {
+  test('renders Desktop Companion without layout overflow', async ({ page }, testInfo) => {
+    const browserErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') browserErrors.push(message.text());
+    });
+    page.on('pageerror', (error) => browserErrors.push(error.message));
     await page.goto('http://127.0.0.1:4174');
     await page.addStyleTag({
       content: `
@@ -43,5 +58,10 @@ test.describe('Visual Surface Smoke & Viewport Assertions', () => {
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+    expect(browserErrors).toEqual([]);
+    await page.screenshot({
+      path: `artifacts/overhaul/remediation-2026-08-31/browser/${testInfo.project.name}-desktop.png`,
+      fullPage: true,
+    });
   });
 });

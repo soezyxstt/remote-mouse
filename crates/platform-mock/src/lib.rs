@@ -227,6 +227,9 @@ impl WindowManager for MockPlatform {
                 width: 2560,
                 height: 1440,
                 is_primary: true,
+                x: 0,
+                y: 0,
+                scale_factor: 1.5,
             },
             DisplayInfo {
                 index: 1,
@@ -234,6 +237,9 @@ impl WindowManager for MockPlatform {
                 width: 1920,
                 height: 1080,
                 is_primary: false,
+                x: 2560,
+                y: 0,
+                scale_factor: 1.0,
             },
         ])
     }

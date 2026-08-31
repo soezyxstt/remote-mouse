@@ -12,13 +12,16 @@ describe('PWA Component Unit Tests', () => {
     render(
       <Header
         connectionState="connected"
-        foregroundApp={FIXTURE_FOREGROUND_MEDIA}
         onOpenPairing={handlePairing}
+        onOpenSearch={vi.fn()}
+        onOpenQuickActions={vi.fn()}
+        onOpenSettings={vi.fn()}
       />
     );
 
     expect(screen.getByText('Windows PC')).toBeInTheDocument();
-    expect(screen.getByText('spotify')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quick actions/i })).toBeInTheDocument();
 
     const pairBtn = screen.getByRole('button', { name: /windows pc/i });
     fireEvent.click(pairBtn);
@@ -29,14 +32,15 @@ describe('PWA Component Unit Tests', () => {
     const handleRouteChange = vi.fn();
     render(<NavBar activeRoute="control" onChangeRoute={handleRouteChange} />);
 
-    expect(screen.getByRole('tab', { name: /trackpad/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /control/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /keyboard/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /media/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /slides/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /windows/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /apps/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /clipboard/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /files/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /panels/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /system/i })).toBeInTheDocument();
 
     const mediaTab = screen.getByRole('tab', { name: /media/i });
     fireEvent.click(mediaTab);

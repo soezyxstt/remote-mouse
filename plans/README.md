@@ -15,17 +15,23 @@ Dokumen ini adalah sumber status tunggal untuk overhaul. Baca [PRODUCT-SCOPE](PR
 | Stage                                                  | Milestone                                 | Depends on    | Status      | Applied | Automated | Visual | Windows | Evidence/review |
 | ------------------------------------------------------ | ----------------------------------------- | ------------- | ----------- | ------- | --------- | ------ | ------- | --------------- |
 | [001](001-baseline-codespaces-and-test-harness.md)     | Baseline, Codespaces, test harness        | —             | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [002](002-protocol-action-and-transport-foundation.md) | Protocol, Action, transport seams         | 001           | VERIFIED    | [x]     | [x]       | N/A    | N/A     | [x]             |
-| [003](003-pairing-session-and-security.md)             | Pairing, session security, permissions    | 002           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [004](004-windows-companion-control-plane.md)          | Real Windows companion/control plane      | 003           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [005](005-pwa-shell-navigation-and-design-system.md)   | Mobile shell, navigation, design system   | 002, 003      | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [006](006-trackpad-sidepad-gestures-and-keyboard.md)   | Trackpad, Side Pad, gestures, keyboard    | 005           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [007](007-media-slides-clipboard-and-system.md)        | Core companion feature set                | 004, 005, 006 | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [008](008-apps-windows-displays-and-desktops.md)       | Apps, windows, displays, virtual desktops | 004, 005      | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [009](009-search-context-and-quick-actions.md)         | Search, context engine, quick actions     | 007, 008      | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [010](010-custom-panels-and-personalization.md)        | Panels, action binding, personalization   | 009           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [011](011-file-companion.md)                           | Secure two-way file companion             | 003, 004, 005 | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
-| [012](012-release-hardening-and-native-readiness.md)   | Release gate, packaging, native readiness | 001–011       | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [002](002-protocol-action-and-transport-foundation.md) | Protocol, Action, transport seams         | 001           | IN_PROGRESS | [x]     | [x]       | N/A    | [ ]     | [x]             |
+| [003](003-pairing-session-and-security.md)             | Pairing, session security, permissions    | 002           | IN_PROGRESS | [x]     | [x]       | [ ]    | [ ]     | [x]             |
+| [004](004-windows-companion-control-plane.md)          | Real Windows companion/control plane      | 003           | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [005](005-pwa-shell-navigation-and-design-system.md)   | Mobile shell, navigation, design system   | 002, 003      | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [006](006-trackpad-sidepad-gestures-and-keyboard.md)   | Trackpad, Side Pad, gestures, keyboard    | 005           | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [007](007-media-slides-clipboard-and-system.md)        | Core companion feature set                | 004, 005, 006 | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [008](008-apps-windows-displays-and-desktops.md)       | Apps, windows, displays, virtual desktops | 004, 005      | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [009](009-search-context-and-quick-actions.md)         | Search, context engine, quick actions     | 007, 008      | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [010](010-custom-panels-and-personalization.md)        | Panels, action binding, personalization   | 009           | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [011](011-file-companion.md)                           | Secure two-way file companion             | 003, 004, 005 | IN_PROGRESS | [x]     | [x]       | [x]    | [ ]     | [x]             |
+| [012](012-release-hardening-and-native-readiness.md)   | Release gate, packaging, native readiness | 001–011       | NOT_STARTED | [ ]     | [ ]       | [ ]    | [ ]     | [ ]             |
+
+Audit 2026-08-31 membatalkan klaim `VERIFIED` lama untuk Stage 002–012. Beberapa stage
+ditandai `IN_PROGRESS` bersamaan karena repo mewarisi implementasi parsial lintas-stage dari
+executor sebelumnya; ini bukan pengecualian untuk menandai stage berikutnya `VERIFIED` sebelum
+dependency dan seluruh gate fisiknya selesai. Detail bukti dan gap yang masih terbuka ada di
+`artifacts/overhaul/remediation-2026-08-31/execution-log.md`.
 
 ## Executor protocol
 
@@ -72,8 +78,8 @@ For every UI stage, test at minimum `390x844`, `430x932`, `768x1024`, `1280x800`
 
 ## Final result record
 
-- Final status: `NOT_STARTED`
+- Final status: `IN_PROGRESS`
 - Verified commit: `TBD`
-- Evidence directory: `TBD`
-- Known limitations: `TBD`
-- Reviewer/date: `TBD`
+- Evidence directory: `artifacts/overhaul/remediation-2026-08-31/`
+- Known limitations: secure browser delivery/QR pairing, persistence/origin policy, physical Windows/phone QA, mixed-DPI validation, previews/virtual desktops, complete search providers, panel editor, and two-way chunked file transfer remain open.
+- Reviewer/date: `Codex / 2026-08-31`

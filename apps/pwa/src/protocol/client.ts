@@ -1,5 +1,20 @@
-import { MessageEnvelope, MessageType, createEnvelope } from '@remote/protocol';
-import { resolveClientIdentity, ClientIdentity } from './crypto';
+import {
+  Action,
+  EncryptedFrameData,
+  MessageEnvelope,
+  MessageType,
+  SessionReadyData,
+  createEnvelope,
+} from '@remote/protocol';
+import {
+  BrowserSessionCipher,
+  ClientIdentity,
+  EphemeralKeyAgreement,
+  buildSessionTranscript,
+  createEphemeralKeyAgreement,
+  deriveSessionCipher,
+  resolveClientIdentity,
+} from './crypto';
 
 export type ConnectionState =
   'disconnected' | 'connecting' | 'pairing_required' | 'connected' | 'error';
@@ -16,6 +31,11 @@ export class RemoteClient {
   private retryCount: number = 0;
   private pairingToken: string | null = null;
   private identity: ClientIdentity | null = null;
+  private keyAgreement: EphemeralKeyAgreement | null = null;
+  private sessionCipher: BrowserSessionCipher | null = null;
+  private pendingSessionCipher: BrowserSessionCipher | null = null;
+  private outboundChain: Promise<void> = Promise.resolve();
+  private inboundChain: Promise<void> = Promise.resolve();
 
   constructor() {
     const savedHost = localStorage.getItem('remote_host');
@@ -77,9 +97,12 @@ export class RemoteClient {
     }
 
     this.setState('connecting');
+    this.sessionCipher = null;
+    this.pendingSessionCipher = null;
 
     try {
       this.identity = await resolveClientIdentity();
+      this.keyAgreement = await createEphemeralKeyAgreement();
       const wsUrl = this.url.replace(/^http/, 'ws') + '/ws';
       this.ws = new WebSocket(wsUrl);
 
@@ -94,44 +117,28 @@ export class RemoteClient {
             clientName: this.identity.clientName,
             token: this.pairingToken,
             publicKey: this.identity.publicKey,
+            ecdhPublicKey: this.keyAgreement?.publicKeyBase64,
+            clientNonce: this.keyAgreement?.clientNonce,
             authTier: this.identity.tier,
           });
         } else {
           // Reconnecting established session challenge
           this.send('auth.login_challenge', {
-            nonce: this.identity.clientId,
+            clientId: this.identity.clientId,
+            ecdhPublicKey: this.keyAgreement?.publicKeyBase64,
+            clientNonce: this.keyAgreement?.clientNonce,
           });
         }
       };
 
-      this.ws.onmessage = async (event) => {
-        try {
-          const env = JSON.parse(event.data) as MessageEnvelope;
-
-          if (env.type === 'auth.session_ready') {
-            this.setState('connected');
-            this.pairingToken = null;
-          } else if (env.type === 'auth.login_challenge') {
-            const data = env.data as { nonce?: string };
-            if (data.nonce && this.identity?.signChallenge) {
-              const signature = await this.identity.signChallenge(data.nonce);
-              this.send('auth.login_response', {
-                clientId: this.identity.clientId,
-                signature,
-                nonce: data.nonce,
-              });
-            } else if (this.identity?.tier === 'local_http_ephemeral') {
-              // Local fallback without saved session requires pairing PIN
-              this.setState('pairing_required');
-            }
-          } else if (env.type === 'auth.error') {
-            this.setState('pairing_required');
-          }
-
-          this.listeners.forEach((l) => l(env));
-        } catch (e) {
-          console.error('Failed to parse WebSocket message', e);
-        }
+      this.ws.onmessage = (event) => {
+        this.inboundChain = this.inboundChain
+          .then(() => this.handleWireMessage(event.data))
+          .catch((error) => {
+            console.error('Rejected protected WebSocket message', error);
+            this.setState('error');
+            this.ws?.close(1008, 'Invalid protected frame');
+          });
       };
 
       this.ws.onclose = () => {
@@ -172,24 +179,111 @@ export class RemoteClient {
       this.ws.close();
       this.ws = null;
     }
+    this.sessionCipher = null;
+    this.pendingSessionCipher = null;
+    this.keyAgreement = null;
     this.setState('disconnected');
   }
 
   public send<T>(type: MessageType, data: T) {
+    const envelope = createEnvelope(type, data);
+    if (!this.sessionCipher) {
+      this.sendPlaintext(envelope);
+      return;
+    }
+
+    this.outboundChain = this.outboundChain
+      .then(async () => {
+        const encoded = new TextEncoder().encode(JSON.stringify(envelope));
+        const encrypted = await this.sessionCipher?.encrypt(encoded);
+        if (!encrypted) return;
+        this.sendPlaintext(createEnvelope('secure.encrypted_frame', encrypted));
+      })
+      .catch((error) => {
+        console.error('Failed to encrypt outbound message', error);
+        this.setState('error');
+        this.ws?.close(1011, 'Encryption failed');
+      });
+  }
+
+  public execute(action: Action) {
+    this.send('action.execute', action);
+  }
+
+  public sendBinaryPointerDelta(dx: number, dy: number) {
+    if (Number.isFinite(dx) && Number.isFinite(dy)) {
+      this.send('input.pointer.delta', { dx, dy });
+    }
+  }
+
+  private sendPlaintext(envelope: MessageEnvelope) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const envelope = createEnvelope(type, data);
       this.ws.send(JSON.stringify(envelope));
     }
   }
 
-  public sendBinaryPointerDelta(dx: number, dy: number) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const buffer = new ArrayBuffer(8);
-      const view = new DataView(buffer);
-      view.setFloat32(0, dx, true);
-      view.setFloat32(4, dy, true);
-      this.ws.send(buffer);
+  private async handleWireMessage(raw: unknown) {
+    if (typeof raw !== 'string') throw new Error('Binary WebSocket frames are not accepted');
+    let env = JSON.parse(raw) as MessageEnvelope;
+
+    if (env.type === 'secure.encrypted_frame') {
+      if (!this.sessionCipher) throw new Error('Encrypted frame arrived before session setup');
+      const plaintext = await this.sessionCipher.decrypt(env.data as EncryptedFrameData);
+      env = JSON.parse(new TextDecoder().decode(plaintext)) as MessageEnvelope;
+    } else if (this.sessionCipher && env.type !== 'auth.error') {
+      throw new Error('Plaintext application frame arrived after session setup');
     }
+
+    if (env.type === 'auth.session_ready') {
+      const data = env.data as SessionReadyData;
+      if (!this.keyAgreement || !data.serverEcdhPublicKey || !data.sessionSalt) {
+        throw new Error('Session ready message omitted ECDH parameters');
+      }
+      this.sessionCipher =
+        this.pendingSessionCipher ??
+        (await deriveSessionCipher(this.keyAgreement, data.serverEcdhPublicKey, data.sessionSalt));
+      this.pendingSessionCipher = null;
+      this.setState('connected');
+      this.pairingToken = null;
+    } else if (env.type === 'auth.login_challenge') {
+      const data = env.data as {
+        nonce?: string;
+        serverEcdhPublicKey?: string;
+        sessionSalt?: string;
+      };
+      if (
+        !data.nonce ||
+        !data.serverEcdhPublicKey ||
+        !data.sessionSalt ||
+        !this.identity ||
+        !this.keyAgreement
+      ) {
+        throw new Error('Login challenge omitted transcript parameters');
+      }
+      this.pendingSessionCipher = await deriveSessionCipher(
+        this.keyAgreement,
+        data.serverEcdhPublicKey,
+        data.sessionSalt
+      );
+      const transcript = buildSessionTranscript({
+        clientId: this.identity.clientId,
+        challengeNonce: data.nonce,
+        clientNonce: this.keyAgreement.clientNonce,
+        clientEcdhPublicKey: this.keyAgreement.publicKeyBase64,
+        serverEcdhPublicKey: data.serverEcdhPublicKey,
+        sessionSalt: data.sessionSalt,
+      });
+      const signature = await this.identity.signChallenge(transcript);
+      this.send('auth.login_response', {
+        clientId: this.identity.clientId,
+        signature,
+        nonce: data.nonce,
+      });
+    } else if (env.type === 'auth.error') {
+      this.setState('pairing_required');
+    }
+
+    this.listeners.forEach((listener) => listener(env));
   }
 }
 

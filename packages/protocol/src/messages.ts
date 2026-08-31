@@ -12,8 +12,15 @@ export type MessageType =
   | 'presentation.command'
   | 'apps.launch'
   | 'windows.action'
+  | 'windows.list'
+  | 'windows.items'
+  | 'apps.list'
+  | 'apps.items'
+  | 'displays.list'
   | 'macro.execute'
   | 'power.command'
+  | 'action.execute'
+  | 'action.result'
   // Data
   | 'clipboard.get'
   | 'clipboard.set'
@@ -33,6 +40,7 @@ export type MessageType =
   | 'auth.login_response'
   | 'auth.session_ready'
   | 'auth.error'
+  | 'secure.encrypted_frame'
   // State Sync Broadcasts
   | 'state.foreground_app'
   | 'state.media_session'
@@ -117,10 +125,15 @@ export interface PairRequestData {
   clientName: string;
   token: string;
   publicKey: string;
+  ecdhPublicKey: string;
+  clientNonce: string;
+  authTier: 'hosted_pwa_webcrypto';
 }
 
 export interface LoginChallengeData {
-  nonce: string;
+  clientId: string;
+  ecdhPublicKey: string;
+  clientNonce: string;
 }
 
 export interface LoginResponseData {
@@ -129,12 +142,20 @@ export interface LoginResponseData {
   nonce: string;
 }
 
+export interface EncryptedFrameData {
+  seq: number;
+  nonce: string;
+  ciphertext: string;
+}
+
 // Server -> Client Data Payloads
 export interface SessionReadyData {
   serverName: string;
   serverVersion: string;
   capabilities: Capability[];
   activeDisplayCount: number;
+  serverEcdhPublicKey: string;
+  sessionSalt: string;
 }
 
 export interface ForegroundAppState {
@@ -168,6 +189,25 @@ export interface DisplayInfo {
   width: number;
   height: number;
   isPrimary: boolean;
+  x: number;
+  y: number;
+  scaleFactor: number;
+}
+
+export interface WindowInfo {
+  id: string;
+  title: string;
+  processName: string;
+  displayIndex: number;
+  isMaximized: boolean;
+  isMinimized: boolean;
+}
+
+export interface AppInfo {
+  id: string;
+  name: string;
+  executablePath: string;
+  icon?: string;
 }
 
 export interface FileItem {

@@ -36,7 +36,8 @@ Capture Dashboard, Trusted Devices, Allowed Folders, Settings, and error/recover
 
 ## Completion record
 
-- Status: `VERIFIED`
+- Status: `IN_PROGRESS`
 - Commit: `checkpoint-stage-004`
 - Codespaces/Windows/visual evidence: `artifacts/overhaul/stage-004/run-001/execution-log.md`, `tests/unit/desktop_components.test.tsx` (5 passed), `tests/visual/smoke_visual.spec.ts` (10 passed)
 - Packaging limitation: None (zero mock leaks in production)
+- Audit correction: the previous physical-Windows and packaging claim is not supported by recorded evidence; lifecycle, persistence, QR/profile, tray, autostart, and installer gates remain open.

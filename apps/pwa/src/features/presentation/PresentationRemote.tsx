@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { globalRemoteClient } from '../../protocol/client';
 import { Haptics } from './Haptics';
+import { Action } from '@remote/protocol';
+import { MiniTrackpad } from '../trackpad/MiniTrackpad';
 import { ChevronLeft, ChevronRight, Play, Square, EyeOff, RotateCcw, Clock } from 'lucide-react';
 
 export const PresentationRemote: React.FC = () => {
@@ -22,9 +24,9 @@ export const PresentationRemote: React.FC = () => {
     setTimeout(() => setVisualFlash(false), 120);
   };
 
-  const handleCommand = (action: string) => {
+  const handleCommand = (action: Extract<Action, { type: 'presentation.command' }>['action']) => {
     triggerFeedback();
-    globalRemoteClient.send('presentation.command', { action });
+    globalRemoteClient.execute({ type: 'presentation.command', action });
   };
 
   const formatTimer = (totalSeconds: number) => {
@@ -35,7 +37,7 @@ export const PresentationRemote: React.FC = () => {
 
   return (
     <div
-      className={`flex flex-col h-full w-full p-3 gap-3 select-none transition-colors duration-100 ${
+      className={`flex flex-col h-full w-full p-3 gap-3 overflow-y-auto select-none transition-colors duration-100 ${
         visualFlash ? 'bg-primary/10' : ''
       }`}
     >
@@ -117,6 +119,8 @@ export const PresentationRemote: React.FC = () => {
           <span>Exit (Esc)</span>
         </button>
       </div>
+
+      <MiniTrackpad sidePadMode="scroll" />
     </div>
   );
 };

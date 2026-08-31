@@ -33,7 +33,8 @@ Requires Stages 004–006.
 
 ## Completion record
 
-- Status: `VERIFIED`
+- Status: `IN_PROGRESS`
 - Commit and evidence: `checkpoint-stage-007` / `artifacts/overhaul/stage-007/run-001/execution-log.md`
 - Destructive-action test method: Dry-run and safety confirmation modal wrappers in place
 - Unsupported Windows versions/features: Win32 fallback handles environments without SMTC
+- Audit correction: the prior claim exceeded the implementation. Native synchronized media/presentation state, Mini Trackpad/Side Pad reuse in all modes, clipboard privacy policy, independent power authorization, and physical Windows QA remain open.

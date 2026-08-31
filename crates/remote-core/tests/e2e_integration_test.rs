@@ -1,10 +1,31 @@
+use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use platform_mock::MockPlatform;
+use remote_core::crypto_session::{KeyAgreement, SessionCipher};
 use remote_core::{RemoteServer, ServerState};
 use remote_protocol::*;
 use std::sync::Arc;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message as TungsteniteMessage;
+
+fn protected_wire(cipher: &mut SessionCipher, inner: &MessageEnvelope) -> String {
+    let payload = cipher.encrypt(&serde_json::to_vec(inner).unwrap());
+    serde_json::to_string(&MessageEnvelope {
+        v: 1,
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: 1000,
+        msg_type: "secure.encrypted_frame".to_string(),
+        data: serde_json::to_value(payload).unwrap(),
+    })
+    .unwrap()
+}
+
+fn decrypt_wire(cipher: &mut SessionCipher, response: TungsteniteMessage) -> MessageEnvelope {
+    let outer: MessageEnvelope = serde_json::from_str(&response.into_text().unwrap()).unwrap();
+    let payload = serde_json::from_value(outer.data).unwrap();
+    let plaintext = cipher.decrypt(&payload).unwrap();
+    serde_json::from_slice(&plaintext).unwrap()
+}
 
 #[tokio::test]
 async fn test_e2e_websocket_server_and_client_flow() {
@@ -46,6 +67,8 @@ async fn test_e2e_websocket_server_and_client_flow() {
     let (mut write, mut read) = ws_stream.split();
 
     // 1. Send Pairing Request
+    let client_agreement = KeyAgreement::new();
+    let client_ecdh_public_key = client_agreement.public_key_b64.clone();
     let pair_msg = MessageEnvelope {
         v: 1,
         id: "test-pair-1".to_string(),
@@ -56,6 +79,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
             client_name: "Test E2E Phone".to_string(),
             token: test_token,
             public_key: "dGVzdF9rZXk=".to_string(),
+            ecdh_public_key: client_ecdh_public_key,
+            client_nonce: base64::engine::general_purpose::STANDARD.encode([7_u8; 32]),
+            auth_tier: "hosted_pwa_webcrypto".to_string(),
         })
         .unwrap(),
     };
@@ -72,6 +98,13 @@ async fn test_e2e_websocket_server_and_client_flow() {
     let text = response.into_text().unwrap();
     let resp_env: MessageEnvelope = serde_json::from_str(&text).unwrap();
     assert_eq!(resp_env.msg_type, "auth.session_ready");
+    let ready: SessionReadyData = serde_json::from_value(resp_env.data).unwrap();
+    let salt = base64::engine::general_purpose::STANDARD
+        .decode(ready.session_salt)
+        .unwrap();
+    let mut client_cipher = client_agreement
+        .derive_session_cipher(&ready.server_ecdh_public_key, &salt, false)
+        .unwrap();
 
     // 2. Send Pointer Delta
     let delta_msg = MessageEnvelope {
@@ -88,9 +121,10 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&delta_msg).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &delta_msg,
+        )))
         .await
         .unwrap();
 
@@ -108,9 +142,10 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&media_msg).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &media_msg,
+        )))
         .await
         .unwrap();
 
@@ -129,9 +164,10 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&key_msg).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &key_msg,
+        )))
         .await
         .unwrap();
 
@@ -147,9 +183,10 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&power_msg).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &power_msg,
+        )))
         .await
         .unwrap();
 
@@ -165,9 +202,10 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&clip_set).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &clip_set,
+        )))
         .await
         .unwrap();
 
@@ -180,14 +218,15 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&clip_get).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &clip_get,
+        )))
         .await
         .unwrap();
 
     let clip_resp = read.next().await.unwrap().unwrap();
-    let clip_env: MessageEnvelope = serde_json::from_str(&clip_resp.into_text().unwrap()).unwrap();
+    let clip_env = decrypt_wire(&mut client_cipher, clip_resp);
     assert_eq!(clip_env.msg_type, "state.clipboard");
     assert_eq!(
         clip_env.data.get("text").and_then(|v| v.as_str()),
@@ -207,14 +246,15 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(
-            serde_json::to_string(&file_read).unwrap(),
-        ))
+        .send(TungsteniteMessage::Text(protected_wire(
+            &mut client_cipher,
+            &file_read,
+        )))
         .await
         .unwrap();
 
     let file_resp = read.next().await.unwrap().unwrap();
-    let file_env: MessageEnvelope = serde_json::from_str(&file_resp.into_text().unwrap()).unwrap();
+    let file_env = decrypt_wire(&mut client_cipher, file_resp);
     assert_eq!(file_env.msg_type, "files.content");
     assert_eq!(
         file_env.data.get("filename").and_then(|v| v.as_str()),

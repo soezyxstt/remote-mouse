@@ -34,7 +34,7 @@ Requires Stage 005. Use the Stage-002 `PointerStream` and Action interfaces; fea
 
 ## Completion record
 
-- Status: `VERIFIED`
-- Latency budget/results: RAF batched 120Hz binary pointer frames with zero queue pileup
-- Automated/visual/physical evidence: `artifacts/overhaul/stage-006/run-001/execution-log.md`, `tests/unit/trackpad_gestures.test.tsx` (2 passed)
-- Browser-specific limitations: Touch-action: none prevents browser gesture hijacking
+- Status: `IN_PROGRESS`
+- Latency budget/results: pointer deltas are RAF-batched and carried inside authenticated application frames; a measured input-to-dispatch p50/p95 budget is still required.
+- Automated/visual evidence: deterministic recognizer tests, component tests, and reviewed screenshots are recorded in `artifacts/overhaul/remediation-2026-08-31/execution-log.md`.
+- Remaining gates: physical phone/Windows input QA, full cancellation/reconnect integration, configurable 5/6-finger mappings, and every Side Pad mode/landscape matrix.

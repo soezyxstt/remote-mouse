@@ -9,13 +9,16 @@ import {
   ArrowRight,
   Send,
 } from 'lucide-react';
+import { MiniTrackpad } from '../trackpad/MiniTrackpad';
+
+type KeyboardModifier = 'ctrl' | 'alt' | 'shift' | 'win';
 
 export const HybridKeyboard: React.FC = () => {
   const [textBuffer, setTextBuffer] = useState<string>('');
-  const [activeModifiers, setActiveModifiers] = useState<Set<string>>(new Set());
+  const [activeModifiers, setActiveModifiers] = useState<Set<KeyboardModifier>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const toggleModifier = (mod: string) => {
+  const toggleModifier = (mod: KeyboardModifier) => {
     setActiveModifiers((prev) => {
       const next = new Set(prev);
       if (next.has(mod)) {
@@ -29,7 +32,8 @@ export const HybridKeyboard: React.FC = () => {
 
   const sendKey = (key: string) => {
     const mods = Array.from(activeModifiers);
-    globalRemoteClient.send('keyboard.key', {
+    globalRemoteClient.execute({
+      type: 'keyboard.key',
       key,
       state: 'tap',
       modifiers: mods,
@@ -41,7 +45,8 @@ export const HybridKeyboard: React.FC = () => {
 
   const handleSendText = () => {
     if (textBuffer.length > 0) {
-      globalRemoteClient.send('keyboard.text', {
+      globalRemoteClient.execute({
+        type: 'keyboard.text',
         text: textBuffer,
       });
       setTextBuffer('');
@@ -51,7 +56,8 @@ export const HybridKeyboard: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSendText();
-      globalRemoteClient.send('keyboard.key', {
+      globalRemoteClient.execute({
+        type: 'keyboard.key',
         key: 'Enter',
         state: 'tap',
       });
@@ -79,9 +85,11 @@ export const HybridKeyboard: React.FC = () => {
         </button>
       </div>
 
+      <MiniTrackpad />
+
       {/* Modifier Latch Bar */}
       <div className="grid grid-cols-4 gap-1.5">
-        {['ctrl', 'alt', 'shift', 'win'].map((mod) => {
+        {(['ctrl', 'alt', 'shift', 'win'] as KeyboardModifier[]).map((mod) => {
           const isActive = activeModifiers.has(mod);
           return (
             <button

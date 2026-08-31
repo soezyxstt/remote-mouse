@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActionIntent, PanelComponent, PanelDefinition } from '@remote/protocol';
+import { Action, ActionIntent, PanelComponent, PanelDefinition } from '@remote/protocol';
 import { globalRemoteClient } from '../../protocol/client';
 import { Trackpad } from '../trackpad/Trackpad';
 import { Music } from 'lucide-react';
@@ -9,61 +9,63 @@ interface DynamicPanelRendererProps {
 }
 
 export const DynamicPanelRenderer: React.FC<DynamicPanelRendererProps> = ({ panel }) => {
-  const handleAction = (action?: ActionIntent) => {
-    if (!action) return;
-
+  const toCanonicalAction = (action: ActionIntent): Action => {
     switch (action.type) {
       case 'mouse.click':
-        globalRemoteClient.send('input.pointer.button', {
-          button: action.button,
-          state: 'click',
-        });
-        break;
+        return { type: 'pointer.button', button: action.button, state: 'click' };
       case 'keyboard.key':
-        globalRemoteClient.send('keyboard.key', {
+        return {
+          type: 'keyboard.key',
           key: action.key,
           state: 'tap',
-          modifiers: action.modifiers || [],
-        });
-        break;
+          modifiers: action.modifiers.filter(
+            (modifier): modifier is 'ctrl' | 'alt' | 'shift' | 'win' =>
+              modifier === 'ctrl' ||
+              modifier === 'alt' ||
+              modifier === 'shift' ||
+              modifier === 'win'
+          ),
+        };
       case 'keyboard.shortcut':
-        for (const key of action.keys) {
-          globalRemoteClient.send('keyboard.key', { key, state: 'down' });
-        }
-        for (const key of [...action.keys].reverse()) {
-          globalRemoteClient.send('keyboard.key', { key, state: 'up' });
-        }
-        break;
+        return { type: 'keyboard.shortcut', keys: action.keys };
       case 'keyboard.text':
-        globalRemoteClient.send('keyboard.text', { text: action.text });
-        break;
+        return action;
       case 'media.control':
-        globalRemoteClient.send('media.command', { action: action.action });
-        break;
+        return { type: 'media.command', action: action.action };
       case 'presentation.control':
-        globalRemoteClient.send('presentation.command', { action: action.action });
-        break;
+        return { type: 'presentation.command', action: action.action };
       case 'apps.launch':
-        globalRemoteClient.send('apps.launch', { appId: action.appId });
-        break;
-      case 'windows.snap':
-        globalRemoteClient.send('windows.action', {
+        return action;
+      case 'windows.snap': {
+        const targetAction =
+          action.position === 'left'
+            ? 'snap_left'
+            : action.position === 'right'
+              ? 'snap_right'
+              : action.position === 'maximize'
+                ? 'maximize'
+                : action.position === 'minimize'
+                  ? 'minimize'
+                  : 'move_to_display';
+        return {
+          type: 'windows.action',
           windowId: 'foreground',
-          action: `snap_${action.position}`,
-        });
-        break;
+          action: targetAction,
+          targetDisplay: action.position === 'next_display' ? 1 : undefined,
+        };
+      }
       case 'clipboard.copy_text':
-        globalRemoteClient.send('clipboard.set', { text: action.text });
-        break;
+        return { type: 'clipboard.set', text: action.text };
       case 'macro.execute':
-        globalRemoteClient.send('macro.execute', { macroId: action.macroId });
-        break;
+        return action;
       case 'power.action':
-        globalRemoteClient.send('power.command', { action: action.action });
-        break;
-      default:
-        break;
+        return { type: 'power.command', action: action.action };
     }
+  };
+
+  const handleAction = (action?: ActionIntent) => {
+    if (!action) return;
+    globalRemoteClient.execute(toCanonicalAction(action));
   };
 
   const renderComponent = (comp: PanelComponent) => {

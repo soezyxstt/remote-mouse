@@ -33,7 +33,8 @@ Requires Stages 004 and 005. Low-refresh previews are in scope; full Remote View
 
 ## Completion record
 
-- Status: `VERIFIED`
-- Supported Windows matrix: Windows 10/11 Win32 + Multi-Monitor API bounds verified
-- Preview/privacy decision: On-demand low-refresh state with confirmation wrappers
-- Automated/visual/physical evidence: `artifacts/overhaul/stage-008/run-001/execution-log.md`, `tests/unit/window_manager.test.tsx` (2 passed)
+- Status: `IN_PROGRESS`
+- Supported Windows matrix: the Win32 adapter now cross-compiles and implements real app/window/display enumeration; no physical Windows 10/11 matrix has been run.
+- Preview/privacy decision: previews are not advertised because capture and privacy gates are not implemented. Virtual desktops remain explicitly unsupported rather than using undocumented APIs.
+- Automated/visual evidence: live-query UI tests, workspace tests, Windows target check, and screenshots are recorded in `artifacts/overhaul/remediation-2026-08-31/execution-log.md`.
+- Remaining gates: mixed-DPI runtime validation, previews, stale/race contract tests on Windows, virtual-desktop capability decision, drag/drop, and physical QA.
