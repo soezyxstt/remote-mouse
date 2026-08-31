@@ -372,7 +372,25 @@ async fn handle_message(
 
     // 2. Enforce Capability Permissions for Authenticated Sessions
     let current_dev = match auth_device {
-        Some(d) => d,
+        Some(d) => {
+            let live_dev_opt = {
+                state.device_registry.lock().unwrap().get(&d.id).cloned()
+            };
+            if let Some(live_dev) = live_dev_opt {
+                if live_dev.is_blocked {
+                    return Some(MessageEnvelope {
+                        v: 1,
+                        id: uuid::Uuid::new_v4().to_string(),
+                        timestamp: now,
+                        msg_type: "auth.error".to_string(),
+                        data: json!({ "error": "Device is blocked" }),
+                    });
+                }
+                live_dev
+            } else {
+                d.clone()
+            }
+        }
         None => {
             return Some(MessageEnvelope {
                 v: 1,
@@ -510,6 +528,14 @@ async fn handle_message(
             None
         }
 
+        // Power Management
+        "power.command" => {
+            if let Some(action) = env.data.get("action").and_then(|v| v.as_str()) {
+                let _ = state.power_provider.power_command(action).await;
+            }
+            None
+        }
+
         // Files
         "files.list_roots" => {
             let roots = state.file_provider.list_roots().await.unwrap_or_default();
@@ -536,6 +562,37 @@ async fn handle_message(
                 msg_type: "files.items".to_string(),
                 data: serde_json::to_value(items).unwrap(),
             })
+        }
+        "files.read_file" => {
+            let root_id = env.data.get("rootId").and_then(|v| v.as_str()).unwrap_or("");
+            let subpath = env.data.get("subpath").and_then(|v| v.as_str()).unwrap_or("");
+            match state.file_provider.read_file(root_id, subpath).await {
+                Ok(bytes) => {
+                    use base64::Engine;
+                    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                    let filename = subpath.split(['/', '\\']).last().unwrap_or("file");
+                    Some(MessageEnvelope {
+                        v: 1,
+                        id: uuid::Uuid::new_v4().to_string(),
+                        timestamp: now,
+                        msg_type: "files.content".to_string(),
+                        data: json!({
+                            "rootId": root_id,
+                            "subpath": subpath,
+                            "filename": filename,
+                            "contentBase64": b64,
+                            "size": bytes.len(),
+                        }),
+                    })
+                }
+                Err(e) => Some(MessageEnvelope {
+                    v: 1,
+                    id: uuid::Uuid::new_v4().to_string(),
+                    timestamp: now,
+                    msg_type: "error".to_string(),
+                    data: json!({ "error": format!("Failed to read file: {}", e) }),
+                }),
+            }
         }
 
         // Panels

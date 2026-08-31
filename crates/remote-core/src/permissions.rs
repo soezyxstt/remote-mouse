@@ -20,7 +20,7 @@ impl PermissionChecker {
             "macro.execute" => Some(Capability::AutomationExecute),
             "clipboard.get" => Some(Capability::ClipboardRead),
             "clipboard.set" => Some(Capability::ClipboardWrite),
-            "files.list_roots" | "files.browse" | "files.read_chunk" => {
+            "files.list_roots" | "files.browse" | "files.read_chunk" | "files.read_file" => {
                 Some(Capability::FilesRead)
             }
             "files.write" | "files.delete" => Some(Capability::FilesWrite),

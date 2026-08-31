@@ -17,25 +17,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mock = Arc::new(MockPlatform::new());
 
     #[cfg(windows)]
-    let (input_p, power_p, media_p, pres_p) = {
+    let (input_p, power_p, media_p, pres_p, win_mgr, app_launcher, clip_p, file_p) = {
         let win = Arc::new(platform_windows::WindowsNativeProvider::new());
-        info!("Running on Windows platform: Native Win32 SendInput, Media & Power enabled");
+        let files = Arc::new(remote_core::StandardFileProvider::new());
+        info!("Running on Windows platform: Native Win32 SendInput, Media, Power, Clipboard, WindowManager, and Real Files enabled");
         (
             win.clone() as Arc<dyn remote_protocol::traits::InputProvider>,
             win.clone() as Arc<dyn remote_protocol::traits::PowerProvider>,
             win.clone() as Arc<dyn remote_protocol::traits::MediaProvider>,
             win.clone() as Arc<dyn remote_protocol::traits::PresentationProvider>,
+            win.clone() as Arc<dyn remote_protocol::traits::WindowManager>,
+            win.clone() as Arc<dyn remote_protocol::traits::AppLauncher>,
+            win.clone() as Arc<dyn remote_protocol::traits::ClipboardProvider>,
+            files as Arc<dyn remote_protocol::traits::FileProvider>,
         )
     };
 
     #[cfg(not(windows))]
-    let (input_p, power_p, media_p, pres_p) = {
-        info!("Running in non-Windows environment: MockPlatform enabled");
+    let (input_p, power_p, media_p, pres_p, win_mgr, app_launcher, clip_p, file_p) = {
+        let files = Arc::new(remote_core::StandardFileProvider::new());
+        info!("Running in non-Windows environment: MockPlatform + StandardFileProvider enabled");
         (
             mock.clone() as Arc<dyn remote_protocol::traits::InputProvider>,
             mock.clone() as Arc<dyn remote_protocol::traits::PowerProvider>,
             mock.clone() as Arc<dyn remote_protocol::traits::MediaProvider>,
             mock.clone() as Arc<dyn remote_protocol::traits::PresentationProvider>,
+            mock.clone() as Arc<dyn remote_protocol::traits::WindowManager>,
+            mock.clone() as Arc<dyn remote_protocol::traits::AppLauncher>,
+            mock.clone() as Arc<dyn remote_protocol::traits::ClipboardProvider>,
+            files as Arc<dyn remote_protocol::traits::FileProvider>,
         )
     };
 
@@ -43,10 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         input_p,
         media_p,
         pres_p,
-        mock.clone(),
-        mock.clone(),
-        mock.clone(),
-        mock.clone(),
+        win_mgr,
+        app_launcher,
+        clip_p,
+        file_p,
         power_p,
     );
 

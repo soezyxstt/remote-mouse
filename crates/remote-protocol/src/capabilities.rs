@@ -63,6 +63,7 @@ impl Capability {
             Capability::PresentationControl,
             Capability::ClipboardRead,
             Capability::ClipboardWrite,
+            Capability::FilesRead,
             Capability::AppsLaunch,
             Capability::WindowsControl,
             Capability::AutomationExecute,

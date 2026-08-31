@@ -125,6 +125,84 @@ async fn test_e2e_websocket_server_and_client_flow() {
         .await
         .unwrap();
 
+    // 5. Send Power Command (Lock PC)
+    let power_msg = MessageEnvelope {
+        v: 1,
+        id: "msg-power-1".to_string(),
+        timestamp: 1004,
+        msg_type: "power.command".to_string(),
+        data: serde_json::json!({
+            "action": "lock"
+        }),
+    };
+
+    write
+        .send(TungsteniteMessage::Text(serde_json::to_string(&power_msg).unwrap()))
+        .await
+        .unwrap();
+
+    // 6. Send Clipboard Set & Get
+    let clip_set = MessageEnvelope {
+        v: 1,
+        id: "msg-clip-set".to_string(),
+        timestamp: 1005,
+        msg_type: "clipboard.set".to_string(),
+        data: serde_json::json!({
+            "text": "Copied from PWA test"
+        }),
+    };
+
+    write
+        .send(TungsteniteMessage::Text(serde_json::to_string(&clip_set).unwrap()))
+        .await
+        .unwrap();
+
+    let clip_get = MessageEnvelope {
+        v: 1,
+        id: "msg-clip-get".to_string(),
+        timestamp: 1006,
+        msg_type: "clipboard.get".to_string(),
+        data: serde_json::json!({}),
+    };
+
+    write
+        .send(TungsteniteMessage::Text(serde_json::to_string(&clip_get).unwrap()))
+        .await
+        .unwrap();
+
+    let clip_resp = read.next().await.unwrap().unwrap();
+    let clip_env: MessageEnvelope = serde_json::from_str(&clip_resp.into_text().unwrap()).unwrap();
+    assert_eq!(clip_env.msg_type, "state.clipboard");
+    assert_eq!(
+        clip_env.data.get("text").and_then(|v| v.as_str()),
+        Some("Copied from PWA test")
+    );
+
+    // 7. Send File Read
+    let file_read = MessageEnvelope {
+        v: 1,
+        id: "msg-file-read".to_string(),
+        timestamp: 1007,
+        msg_type: "files.read_file".to_string(),
+        data: serde_json::json!({
+            "rootId": "root_desktop",
+            "subpath": "hello.txt"
+        }),
+    };
+
+    write
+        .send(TungsteniteMessage::Text(serde_json::to_string(&file_read).unwrap()))
+        .await
+        .unwrap();
+
+    let file_resp = read.next().await.unwrap().unwrap();
+    let file_env: MessageEnvelope = serde_json::from_str(&file_resp.into_text().unwrap()).unwrap();
+    assert_eq!(file_env.msg_type, "files.content");
+    assert_eq!(
+        file_env.data.get("filename").and_then(|v| v.as_str()),
+        Some("hello.txt")
+    );
+
     // Allow async dispatcher to process
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -137,4 +215,6 @@ async fn test_e2e_websocket_server_and_client_flow() {
         state_guard.key_history,
         vec![("Escape".to_string(), "tap".to_string(), vec!["ctrl".to_string()])]
     );
+    assert_eq!(state_guard.power_actions, vec!["lock".to_string()]);
+    assert_eq!(state_guard.clipboard_text, "Copied from PWA test");
 }

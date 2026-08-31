@@ -23,7 +23,7 @@ export const DynamicPanelRenderer: React.FC<DynamicPanelRendererProps> = ({ pane
         globalRemoteClient.send('keyboard.key', {
           key: action.key,
           state: 'tap',
-          modifiers: action.modifiers,
+          modifiers: action.modifiers || [],
         });
         break;
       case 'keyboard.shortcut':
@@ -33,6 +33,9 @@ export const DynamicPanelRenderer: React.FC<DynamicPanelRendererProps> = ({ pane
         for (const key of [...action.keys].reverse()) {
           globalRemoteClient.send('keyboard.key', { key, state: 'up' });
         }
+        break;
+      case 'keyboard.text':
+        globalRemoteClient.send('keyboard.text', { text: action.text });
         break;
       case 'media.control':
         globalRemoteClient.send('media.command', { action: action.action });
@@ -48,6 +51,9 @@ export const DynamicPanelRenderer: React.FC<DynamicPanelRendererProps> = ({ pane
           windowId: 'foreground',
           action: `snap_${action.position}`,
         });
+        break;
+      case 'clipboard.copy_text':
+        globalRemoteClient.send('clipboard.set', { text: action.text });
         break;
       case 'macro.execute':
         globalRemoteClient.send('macro.execute', { macroId: action.macroId });

@@ -22,6 +22,8 @@ export type MessageType =
   | 'files.browse'
   | 'files.items'
   | 'files.read_chunk'
+  | 'files.read_file'
+  | 'files.content'
   | 'panels.list'
   | 'panels.save'
   // Auth & Session
