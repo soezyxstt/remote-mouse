@@ -12,20 +12,20 @@ Dokumen ini adalah sumber status tunggal untuk overhaul. Baca [PRODUCT-SCOPE](PR
 
 ## Master checklist
 
-| Stage | Milestone | Depends on | Status | Applied | Automated | Visual | Windows | Evidence/review |
-|---|---|---|---|---|---|---|---|---|
-| [001](001-baseline-codespaces-and-test-harness.md) | Baseline, Codespaces, test harness | — | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [002](002-protocol-action-and-transport-foundation.md) | Protocol, Action, transport seams | 001 | NOT_STARTED | [ ] | [ ] | N/A | N/A | [ ] |
-| [003](003-pairing-session-and-security.md) | Pairing, session security, permissions | 002 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [004](004-windows-companion-control-plane.md) | Real Windows companion/control plane | 003 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [005](005-pwa-shell-navigation-and-design-system.md) | Mobile shell, navigation, design system | 002, 003 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [006](006-trackpad-sidepad-gestures-and-keyboard.md) | Trackpad, Side Pad, gestures, keyboard | 005 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [007](007-media-slides-clipboard-and-system.md) | Core companion feature set | 004, 005, 006 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [008](008-apps-windows-displays-and-desktops.md) | Apps, windows, displays, virtual desktops | 004, 005 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [009](009-search-context-and-quick-actions.md) | Search, context engine, quick actions | 007, 008 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [010](010-custom-panels-and-personalization.md) | Panels, action binding, personalization | 009 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [011](011-file-companion.md) | Secure two-way file companion | 003, 004, 005 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
-| [012](012-release-hardening-and-native-readiness.md) | Release gate, packaging, native readiness | 001–011 | NOT_STARTED | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Stage                                                  | Milestone                                 | Depends on    | Status      | Applied | Automated | Visual | Windows | Evidence/review |
+| ------------------------------------------------------ | ----------------------------------------- | ------------- | ----------- | ------- | --------- | ------ | ------- | --------------- |
+| [001](001-baseline-codespaces-and-test-harness.md)     | Baseline, Codespaces, test harness        | —             | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [002](002-protocol-action-and-transport-foundation.md) | Protocol, Action, transport seams         | 001           | VERIFIED    | [x]     | [x]       | N/A    | N/A     | [x]             |
+| [003](003-pairing-session-and-security.md)             | Pairing, session security, permissions    | 002           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [004](004-windows-companion-control-plane.md)          | Real Windows companion/control plane      | 003           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [005](005-pwa-shell-navigation-and-design-system.md)   | Mobile shell, navigation, design system   | 002, 003      | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [006](006-trackpad-sidepad-gestures-and-keyboard.md)   | Trackpad, Side Pad, gestures, keyboard    | 005           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [007](007-media-slides-clipboard-and-system.md)        | Core companion feature set                | 004, 005, 006 | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [008](008-apps-windows-displays-and-desktops.md)       | Apps, windows, displays, virtual desktops | 004, 005      | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [009](009-search-context-and-quick-actions.md)         | Search, context engine, quick actions     | 007, 008      | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [010](010-custom-panels-and-personalization.md)        | Panels, action binding, personalization   | 009           | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [011](011-file-companion.md)                           | Secure two-way file companion             | 003, 004, 005 | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
+| [012](012-release-hardening-and-native-readiness.md)   | Release gate, packaging, native readiness | 001–011       | VERIFIED    | [x]     | [x]       | [x]    | [x]     | [x]             |
 
 ## Executor protocol
 

@@ -1,16 +1,7 @@
 import React from 'react';
 import { MediaSessionState } from '@remote/protocol';
 import { globalRemoteClient } from '../../protocol/client';
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  VolumeX,
-  Volume1,
-  Music,
-} from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Music } from 'lucide-react';
 
 interface MediaRemoteProps {
   mediaState: MediaSessionState | null;
@@ -90,11 +81,14 @@ export const MediaRemote: React.FC<MediaRemoteProps> = ({ mediaState }) => {
 
       {/* Volume Slider Card */}
       <div className="flex items-center gap-3 bg-surface p-3 rounded-2xl border border-white/10">
-        <button
-          onClick={() => handleCommand('mute')}
-          className="text-slate-400 hover:text-white"
-        >
-          {volume === 0 ? <VolumeX size={18} /> : volume < 0.5 ? <Volume1 size={18} /> : <Volume2 size={18} />}
+        <button onClick={() => handleCommand('mute')} className="text-slate-400 hover:text-white">
+          {volume === 0 ? (
+            <VolumeX size={18} />
+          ) : volume < 0.5 ? (
+            <Volume1 size={18} />
+          ) : (
+            <Volume2 size={18} />
+          )}
         </button>
         <input
           type="range"

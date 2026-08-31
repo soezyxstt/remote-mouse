@@ -15,7 +15,9 @@ use thiserror::Error;
 pub enum CryptoError {
     #[error("Decryption failed / authentication tag mismatch")]
     DecryptionFailed,
-    #[error("Replay packet detected or out-of-order sequence (expected > {expected}, got {received})")]
+    #[error(
+        "Replay packet detected or out-of-order sequence (expected > {expected}, got {received})"
+    )]
     ReplayDetected { expected: u64, received: u64 },
     #[error("Base64 decoding failed")]
     Base64Error,
@@ -33,6 +35,12 @@ pub struct EncryptedFramePayload {
 pub struct KeyAgreement {
     ephemeral_secret: EphemeralSecret,
     pub public_key_b64: String,
+}
+
+impl Default for KeyAgreement {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KeyAgreement {
@@ -86,7 +94,11 @@ pub struct SessionCipher {
 impl SessionCipher {
     /// Derive bidirectional AES-256 session keys from ECDH shared secret (IKM) using HKDF-SHA256
     /// Generates distinct Rx and Tx keys to guarantee direction separation
-    pub fn from_shared_secret(ecdh_shared_secret: &[u8], salt_nonce: &[u8], is_server: bool) -> Self {
+    pub fn from_shared_secret(
+        ecdh_shared_secret: &[u8],
+        salt_nonce: &[u8],
+        is_server: bool,
+    ) -> Self {
         // HKDF with ECDH shared secret as Input Keying Material (IKM)
         let hk = Hkdf::<Sha256>::new(Some(salt_nonce), ecdh_shared_secret);
         let mut key_material = [0u8; 64];

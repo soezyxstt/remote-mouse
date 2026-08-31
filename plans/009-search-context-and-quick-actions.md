@@ -39,7 +39,7 @@ Requires Stages 007 and 008.
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Ranking contract/evidence: `TBD`
-- Context false-positive notes: `TBD`
-- Commit and QA evidence: `TBD`
+- Status: `VERIFIED`
+- Ranking contract/evidence: Deterministic normalized ranking with deduplication verified
+- Context false-positive notes: Non-intrusive AppAware toast with explicit per-process dismissal
+- Commit and QA evidence: `checkpoint-stage-009` / `artifacts/overhaul/stage-009/run-001/execution-log.md`

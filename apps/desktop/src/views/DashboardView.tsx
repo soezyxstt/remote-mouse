@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  QrCode,
-  Wifi,
-  RefreshCw,
-  Copy,
-  Check,
-  Shield,
-} from 'lucide-react';
+import { QrCode, Wifi, RefreshCw, Copy, Check, Shield } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
   const [pairingToken, setPairingToken] = useState<string>('849201');

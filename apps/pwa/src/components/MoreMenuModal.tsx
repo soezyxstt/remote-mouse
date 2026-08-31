@@ -67,9 +67,7 @@ export const MoreMenuModal: React.FC<MoreMenuModalProps> = ({
               className="flex items-center justify-between bg-surface-elevated hover:bg-surface-hover p-3.5 rounded-2xl border border-white/5 active:scale-[0.99] transition-all text-left"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-surface rounded-xl border border-white/5">
-                  {item.icon}
-                </div>
+                <div className="p-2.5 bg-surface rounded-xl border border-white/5">{item.icon}</div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-200">{item.title}</h4>
                   <p className="text-[11px] text-slate-400">{item.subtitle}</p>

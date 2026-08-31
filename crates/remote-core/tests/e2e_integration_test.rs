@@ -40,7 +40,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
 
     // Connect WebSocket client
     let url = format!("ws://127.0.0.1:{}/ws", test_port);
-    let (ws_stream, _) = connect_async(&url).await.expect("Failed to connect to ws server");
+    let (ws_stream, _) = connect_async(&url)
+        .await
+        .expect("Failed to connect to ws server");
     let (mut write, mut read) = ws_stream.split();
 
     // 1. Send Pairing Request
@@ -59,7 +61,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pair_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -84,7 +88,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&delta_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&delta_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -102,7 +108,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&media_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&media_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -121,7 +129,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&key_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&key_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -137,7 +147,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&power_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&power_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -153,7 +165,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&clip_set).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&clip_set).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -166,7 +180,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&clip_get).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&clip_get).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -191,7 +207,9 @@ async fn test_e2e_websocket_server_and_client_flow() {
     };
 
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&file_read).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&file_read).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -210,10 +228,17 @@ async fn test_e2e_websocket_server_and_client_flow() {
     let state_guard = mock.state.lock().unwrap();
     assert_eq!(state_guard.cursor_pos, (545.0, 480.0));
     assert_eq!(state_guard.pointer_history, vec![(45.0, -20.0)]);
-    assert_eq!(state_guard.media_history, vec![("play_pause".to_string(), None)]);
+    assert_eq!(
+        state_guard.media_history,
+        vec![("play_pause".to_string(), None)]
+    );
     assert_eq!(
         state_guard.key_history,
-        vec![("Escape".to_string(), "tap".to_string(), vec!["ctrl".to_string()])]
+        vec![(
+            "Escape".to_string(),
+            "tap".to_string(),
+            vec!["ctrl".to_string()]
+        )]
     );
     assert_eq!(state_guard.power_actions, vec!["lock".to_string()]);
     assert_eq!(state_guard.clipboard_text, "Copied from PWA test");

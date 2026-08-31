@@ -1,3 +1,4 @@
+use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use platform_mock::MockPlatform;
 use remote_core::crypto_session::{KeyAgreement, SessionCipher};
@@ -98,7 +99,9 @@ async fn test_negative_unauthorized_capability_denial() {
         .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pair_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -121,7 +124,9 @@ async fn test_negative_unauthorized_capability_denial() {
         data: serde_json::json!({}),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&file_req).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&file_req).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -180,7 +185,9 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
         }),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pair_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -194,10 +201,17 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
         id: "move-1".to_string(),
         timestamp: 1001,
         msg_type: "input.pointer.delta".to_string(),
-        data: serde_json::to_value(PointerDeltaData { dx: 10.0, dy: 10.0, dt: None }).unwrap(),
+        data: serde_json::to_value(PointerDeltaData {
+            dx: 10.0,
+            dy: 10.0,
+            dt: None,
+        })
+        .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&move_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&move_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -206,10 +220,16 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
         id: "pres-1".to_string(),
         timestamp: 1002,
         msg_type: "presentation.command".to_string(),
-        data: serde_json::to_value(PresentationCommandData { action: "next".to_string(), slide_index: None }).unwrap(),
+        data: serde_json::to_value(PresentationCommandData {
+            action: "next".to_string(),
+            slide_index: None,
+        })
+        .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&pres_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pres_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -219,10 +239,17 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
         id: "key-req-eph".to_string(),
         timestamp: 1003,
         msg_type: "keyboard.key".to_string(),
-        data: serde_json::to_value(KeyActionData { key: "r".to_string(), state: "tap".to_string(), modifiers: Some(vec!["win".to_string()]) }).unwrap(),
+        data: serde_json::to_value(KeyActionData {
+            key: "r".to_string(),
+            state: "tap".to_string(),
+            modifiers: Some(vec!["win".to_string()]),
+        })
+        .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&key_req).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&key_req).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -240,7 +267,9 @@ async fn test_r0_a5_ephemeral_tier_restricts_raw_keyboard_and_files() {
         data: serde_json::json!({}),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&file_req).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&file_req).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -298,18 +327,17 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
         .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pair_msg).unwrap(),
+        ))
         .await
         .unwrap();
 
     let _resp = read.next().await.unwrap().unwrap();
 
     // 2. Client sets up matching SessionCipher (is_server: false)
-    let mut client_cipher = SessionCipher::from_shared_secret(
-        client_pub_key.as_bytes(),
-        test_token.as_bytes(),
-        false,
-    );
+    let mut client_cipher =
+        SessionCipher::from_shared_secret(client_pub_key.as_bytes(), test_token.as_bytes(), false);
 
     // 3. Encrypt pointer delta message inside AES-GCM frame
     let inner_delta = MessageEnvelope {
@@ -317,7 +345,12 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
         id: "delta-enc-1".to_string(),
         timestamp: 1001,
         msg_type: "input.pointer.delta".to_string(),
-        data: serde_json::to_value(PointerDeltaData { dx: 33.0, dy: -12.0, dt: None }).unwrap(),
+        data: serde_json::to_value(PointerDeltaData {
+            dx: 33.0,
+            dy: -12.0,
+            dt: None,
+        })
+        .unwrap(),
     };
     let inner_json = serde_json::to_vec(&inner_delta).unwrap();
     let encrypted_payload = client_cipher.encrypt(&inner_json);
@@ -338,7 +371,10 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
     assert!(!wire_text.contains("input.pointer.delta"));
 
     // Send encrypted frame
-    write.send(TungsteniteMessage::Text(wire_text.clone())).await.unwrap();
+    write
+        .send(TungsteniteMessage::Text(wire_text.clone()))
+        .await
+        .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -349,7 +385,10 @@ async fn test_r0_a6_session_confidentiality_and_replay_denial() {
     }
 
     // 4. Replay Attack: Attacker re-sends the captured frame with sequence 1
-    write.send(TungsteniteMessage::Text(wire_text)).await.unwrap();
+    write
+        .send(TungsteniteMessage::Text(wire_text))
+        .await
+        .unwrap();
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -408,7 +447,9 @@ async fn test_negative_reused_pairing_token_denial() {
             .unwrap(),
         };
         write
-            .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+            .send(TungsteniteMessage::Text(
+                serde_json::to_string(&pair_msg).unwrap(),
+            ))
             .await
             .unwrap();
         let resp = read.next().await.unwrap().unwrap();
@@ -434,7 +475,9 @@ async fn test_negative_reused_pairing_token_denial() {
             .unwrap(),
         };
         write
-            .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+            .send(TungsteniteMessage::Text(
+                serde_json::to_string(&pair_msg).unwrap(),
+            ))
             .await
             .unwrap();
         let resp = read.next().await.unwrap().unwrap();
@@ -489,7 +532,9 @@ async fn test_negative_input_safety_release_on_disconnect() {
         .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&pair_msg).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pair_msg).unwrap(),
+        ))
         .await
         .unwrap();
     let _ = read.next().await.unwrap().unwrap();
@@ -508,7 +553,9 @@ async fn test_negative_input_safety_release_on_disconnect() {
         .unwrap(),
     };
     write
-        .send(TungsteniteMessage::Text(serde_json::to_string(&key_down).unwrap()))
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&key_down).unwrap(),
+        ))
         .await
         .unwrap();
 
@@ -574,4 +621,185 @@ fn test_real_symlink_escape_denial() {
 
     // Cleanup temp
     let _ = fs::remove_dir_all(&base_temp);
+}
+
+#[tokio::test]
+async fn test_negative_binary_pointer_capability_denial() {
+    let mock = Arc::new(MockPlatform::new());
+    let state = ServerState::new_with_providers(
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+    );
+
+    let test_token = state
+        .auth_manager
+        .lock()
+        .unwrap()
+        .generate_pairing_token(60);
+
+    let test_port = 18086;
+    let server = RemoteServer::new(state.clone(), test_port);
+    tokio::spawn(async move {
+        let _ = server.run().await;
+    });
+    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+
+    let url = format!("ws://127.0.0.1:{}/ws", test_port);
+    let (ws_stream, _) = connect_async(&url).await.expect("connect failed");
+    let (mut write, mut read) = ws_stream.split();
+
+    // 1. Pair device
+    let pair_msg = MessageEnvelope {
+        v: 1,
+        id: "pair-bin-test".to_string(),
+        timestamp: 1000,
+        msg_type: "auth.pair_request".to_string(),
+        data: serde_json::to_value(PairRequestData {
+            client_id: "phone_bin_restricted".to_string(),
+            client_name: "Restricted Binary Phone".to_string(),
+            token: test_token,
+            public_key: "dGVzdF9wdWJsaWNfa2V5".to_string(),
+        })
+        .unwrap(),
+    };
+    write
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&pair_msg).unwrap(),
+        ))
+        .await
+        .unwrap();
+
+    let _resp = read.next().await.unwrap().unwrap();
+
+    // Initial position is 500.0, 500.0
+    {
+        let state_guard = mock.state.lock().unwrap();
+        assert_eq!(state_guard.cursor_pos, (500.0, 500.0));
+    }
+
+    // 2. Revoke InputMouse capability from live registry
+    {
+        let mut registry = state.device_registry.lock().unwrap();
+        if let Some(dev) = registry.get_mut("phone_bin_restricted") {
+            dev.capabilities = vec![Capability::MediaControl]; // NO InputMouse
+        }
+    }
+
+    // 3. Send raw binary pointer delta: dx = 25.0, dy = 35.0
+    let mut bin = Vec::new();
+    bin.extend_from_slice(&25.0f32.to_le_bytes());
+    bin.extend_from_slice(&35.0f32.to_le_bytes());
+    write.send(TungsteniteMessage::Binary(bin)).await.unwrap();
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Must NOT have moved because capability was revoked!
+    {
+        let state_guard = mock.state.lock().unwrap();
+        assert_eq!(
+            state_guard.cursor_pos,
+            (500.0, 500.0),
+            "Binary pointer frame must be rejected without input.mouse capability"
+        );
+        assert_eq!(state_guard.pointer_history.len(), 0);
+    }
+}
+
+#[tokio::test]
+async fn test_negative_ecdsa_forged_signature_denial() {
+    let mock = Arc::new(MockPlatform::new());
+    let state = ServerState::new_with_providers(
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+        mock.clone(),
+    );
+
+    // Register a known device with a valid P-256 public key
+    let signing_key = p256::ecdsa::SigningKey::random(&mut rand::thread_rng());
+    let verifying_key = signing_key.verifying_key();
+    let sec1_pub = verifying_key.to_encoded_point(false);
+    let pub_b64 = base64::engine::general_purpose::STANDARD.encode(sec1_pub.as_bytes());
+
+    let dev = remote_core::devices::TrustedDevice {
+        id: "phone_ecdsa".to_string(),
+        name: "ECDSA Device".to_string(),
+        public_key: pub_b64.clone(),
+        capabilities: vec![Capability::InputMouse],
+        created_at: 1000,
+        last_seen_at: 1000,
+        is_blocked: false,
+    };
+    state.device_registry.lock().unwrap().register(dev);
+
+    let test_port = 18087;
+    let server = RemoteServer::new(state.clone(), test_port);
+    tokio::spawn(async move {
+        let _ = server.run().await;
+    });
+    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+
+    let url = format!("ws://127.0.0.1:{}/ws", test_port);
+    let (ws_stream, _) = connect_async(&url).await.expect("connect failed");
+    let (mut write, mut read) = ws_stream.split();
+
+    // 1. Request login challenge
+    let challenge_req = MessageEnvelope {
+        v: 1,
+        id: "chal-req-1".to_string(),
+        timestamp: 1000,
+        msg_type: "auth.login_challenge".to_string(),
+        data: serde_json::json!({ "nonce": "phone_ecdsa" }),
+    };
+    write
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&challenge_req).unwrap(),
+        ))
+        .await
+        .unwrap();
+
+    let chal_resp = read.next().await.unwrap().unwrap();
+    let chal_env: MessageEnvelope = serde_json::from_str(&chal_resp.into_text().unwrap()).unwrap();
+    assert_eq!(chal_env.msg_type, "auth.login_challenge");
+    let nonce = chal_env.data["nonce"].as_str().unwrap().to_string();
+
+    // 2. Attacker submits forged signature
+    let forged_sig_b64 = base64::engine::general_purpose::STANDARD.encode(vec![0u8; 64]);
+    let login_resp = MessageEnvelope {
+        v: 1,
+        id: "login-resp-1".to_string(),
+        timestamp: 1001,
+        msg_type: "auth.login_response".to_string(),
+        data: serde_json::json!({
+            "clientId": "phone_ecdsa",
+            "signature": forged_sig_b64,
+            "nonce": nonce
+        }),
+    };
+    write
+        .send(TungsteniteMessage::Text(
+            serde_json::to_string(&login_resp).unwrap(),
+        ))
+        .await
+        .unwrap();
+
+    let reply = read.next().await.unwrap().unwrap();
+    let reply_env: MessageEnvelope = serde_json::from_str(&reply.into_text().unwrap()).unwrap();
+
+    // Authentication MUST fail!
+    assert_eq!(reply_env.msg_type, "auth.error");
+    assert!(reply_env.data["error"]
+        .as_str()
+        .unwrap()
+        .contains("Authentication failed"));
 }

@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ForegroundAppState, MediaSessionState, MessageEnvelope, PanelDefinition } from '@remote/protocol';
+import {
+  ForegroundAppState,
+  MediaSessionState,
+  MessageEnvelope,
+  PanelDefinition,
+} from '@remote/protocol';
 import { ConnectionState, globalRemoteClient } from './client';
 
 export function useRemoteConnection() {
-  const [connectionState, setConnectionState] = useState<ConnectionState>(globalRemoteClient.getState());
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    globalRemoteClient.getState()
+  );
   const [foregroundApp, setForegroundApp] = useState<ForegroundAppState | null>(null);
   const [mediaState, setMediaState] = useState<MediaSessionState | null>(null);
   const [panels, setPanels] = useState<PanelDefinition[]>([]);

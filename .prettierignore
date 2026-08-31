@@ -1,0 +1,11 @@
+node_modules
+target
+dist
+Cargo.lock
+package-lock.json
+artifacts
+.system_generated
+test-results
+playwright-report
+.playwright
+

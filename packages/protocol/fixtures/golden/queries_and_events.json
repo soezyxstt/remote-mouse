@@ -1,0 +1,48 @@
+{
+  "sessionReady": {
+    "serverName": "Workstation-Win11",
+    "serverVersion": "0.1.0",
+    "capabilities": ["input.mouse", "input.keyboard", "media.control", "power.lock"],
+    "activeDisplayCount": 2
+  },
+  "foregroundAppState": {
+    "processName": "chrome.exe",
+    "windowTitle": "Google Chrome",
+    "category": "browser"
+  },
+  "mediaSessionState": {
+    "title": "Song Title",
+    "artist": "Artist Name",
+    "album": "Album Name",
+    "isPlaying": true,
+    "positionSec": 60.0,
+    "durationSec": 180.0,
+    "volume": 80.0,
+    "sourceApp": "Spotify"
+  },
+  "displayInfo": {
+    "index": 0,
+    "name": "Main Display",
+    "width": 1920,
+    "height": 1080,
+    "isPrimary": true
+  },
+  "fileItem": {
+    "id": "root-docs:sample.txt",
+    "name": "sample.txt",
+    "isDir": false,
+    "sizeBytes": 1024,
+    "modifiedAt": 1725000000,
+    "extension": "txt"
+  },
+  "actionResultOk": {
+    "actionId": "act-1",
+    "status": "ok",
+    "error": null
+  },
+  "actionResultError": {
+    "actionId": "act-2",
+    "status": "error",
+    "error": "Permission Denied: power.restart requires authorization"
+  }
+}

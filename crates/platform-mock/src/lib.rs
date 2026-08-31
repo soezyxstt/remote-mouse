@@ -1,8 +1,6 @@
 use async_trait::async_trait;
 use remote_protocol::traits::*;
-use remote_protocol::{
-    DisplayInfo, FileItem, ForegroundAppState, MediaSessionState, VirtualRoot,
-};
+use remote_protocol::{DisplayInfo, FileItem, ForegroundAppState, MediaSessionState, VirtualRoot};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -114,11 +112,9 @@ impl InputProvider for MockPlatform {
         modifiers: &[String],
     ) -> Result<(), PlatformError> {
         let mut state = self.state.lock().unwrap();
-        state.key_history.push((
-            key.to_string(),
-            key_state.to_string(),
-            modifiers.to_vec(),
-        ));
+        state
+            .key_history
+            .push((key.to_string(), key_state.to_string(), modifiers.to_vec()));
         Ok(())
     }
 
@@ -137,11 +133,7 @@ impl InputProvider for MockPlatform {
 
 #[async_trait]
 impl MediaProvider for MockPlatform {
-    async fn media_command(
-        &self,
-        action: &str,
-        value: Option<f32>,
-    ) -> Result<(), PlatformError> {
+    async fn media_command(&self, action: &str, value: Option<f32>) -> Result<(), PlatformError> {
         let mut state = self.state.lock().unwrap();
         state.media_history.push((action.to_string(), value));
         if let Some(ref mut media) = state.media_state {
@@ -216,11 +208,9 @@ impl WindowManager for MockPlatform {
         target_display: Option<u32>,
     ) -> Result<(), PlatformError> {
         let mut state = self.state.lock().unwrap();
-        state.window_actions.push((
-            window_id.to_string(),
-            action.to_string(),
-            target_display,
-        ));
+        state
+            .window_actions
+            .push((window_id.to_string(), action.to_string(), target_display));
         Ok(())
     }
 
@@ -274,7 +264,8 @@ impl AppLauncher for MockPlatform {
             AppInfo {
                 id: "spotify".to_string(),
                 name: "Spotify".to_string(),
-                executable_path: "C:\\Users\\User\\AppData\\Roaming\\Spotify\\Spotify.exe".to_string(),
+                executable_path: "C:\\Users\\User\\AppData\\Roaming\\Spotify\\Spotify.exe"
+                    .to_string(),
                 icon: Some("music".to_string()),
             },
         ])
@@ -329,7 +320,7 @@ impl FileProvider for MockPlatform {
                     is_dir: false,
                     size_bytes: Some(v.len() as u64),
                     modified_at: Some(1725000000),
-                    extension: relative.split('.').last().map(|s| s.to_string()),
+                    extension: relative.split('.').next_back().map(|s| s.to_string()),
                 });
             }
         }
@@ -344,7 +335,7 @@ impl FileProvider for MockPlatform {
             .virtual_files
             .get(&key)
             .cloned()
-            .ok_or_else(|| PlatformError::NotFound(key))
+            .ok_or(PlatformError::NotFound(key))
     }
 
     async fn write_file(

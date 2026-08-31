@@ -2,6 +2,7 @@ pub mod auth;
 pub mod automation;
 pub mod crypto_session;
 pub mod devices;
+pub mod dispatcher;
 pub mod files;
 pub mod licensing;
 pub mod permissions;
@@ -9,6 +10,8 @@ pub mod presets;
 pub mod server;
 pub mod state;
 pub mod traits;
+
+pub use dispatcher::ActionDispatcher;
 
 pub use auth::{AuthError, AuthManager, PairingToken, PendingPairRequest};
 pub use automation::MacroEngine;
@@ -49,7 +52,11 @@ mod tests {
         let (state, _) = create_test_state();
 
         // 1. Generate pairing token on desktop
-        let token = state.auth_manager.lock().unwrap().generate_pairing_token(60);
+        let token = state
+            .auth_manager
+            .lock()
+            .unwrap()
+            .generate_pairing_token(60);
         assert_eq!(token.len(), 6);
 
         // Try second pairing with same token (should fail because single-use)
@@ -109,11 +116,7 @@ mod tests {
             ],
         };
 
-        state
-            .macro_engine
-            .execute_macro(&macro_def)
-            .await
-            .unwrap();
+        state.macro_engine.execute_macro(&macro_def).await.unwrap();
 
         let state_guard = mock.state.lock().unwrap();
         assert_eq!(state_guard.launched_apps, vec!["vscode".to_string()]);
@@ -124,19 +127,13 @@ mod tests {
     fn test_permission_gatekeeper() {
         let caps = vec![Capability::InputMouse, Capability::MediaControl];
 
-        assert!(PermissionChecker::is_allowed(
-            &caps,
-            Capability::InputMouse
-        ));
+        assert!(PermissionChecker::is_allowed(&caps, Capability::InputMouse));
         assert!(PermissionChecker::is_allowed(
             &caps,
             Capability::MediaControl
         ));
 
-        assert!(!PermissionChecker::is_allowed(
-            &caps,
-            Capability::FilesRead
-        ));
+        assert!(!PermissionChecker::is_allowed(&caps, Capability::FilesRead));
         assert!(!PermissionChecker::is_allowed(
             &caps,
             Capability::PowerShutdown

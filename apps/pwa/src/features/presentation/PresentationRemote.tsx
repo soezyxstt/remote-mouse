@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { globalRemoteClient } from '../../protocol/client';
 import { Haptics } from './Haptics';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Play,
-  Square,
-  EyeOff,
-  RotateCcw,
-  Clock,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Square, EyeOff, RotateCcw, Clock } from 'lucide-react';
 
 export const PresentationRemote: React.FC = () => {
   const [seconds, setSeconds] = useState<number>(0);

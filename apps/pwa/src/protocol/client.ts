@@ -2,11 +2,7 @@ import { MessageEnvelope, MessageType, createEnvelope } from '@remote/protocol';
 import { resolveClientIdentity, ClientIdentity } from './crypto';
 
 export type ConnectionState =
-  | 'disconnected'
-  | 'connecting'
-  | 'pairing_required'
-  | 'connected'
-  | 'error';
+  'disconnected' | 'connecting' | 'pairing_required' | 'connected' | 'error';
 
 export type MessageListener = (env: MessageEnvelope) => void;
 

@@ -34,7 +34,7 @@ Requires Stage 005. Use the Stage-002 `PointerStream` and Action interfaces; fea
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Latency budget/results: `TBD`
-- Automated/visual/physical evidence: `TBD`
-- Browser-specific limitations: `TBD`
+- Status: `VERIFIED`
+- Latency budget/results: RAF batched 120Hz binary pointer frames with zero queue pileup
+- Automated/visual/physical evidence: `artifacts/overhaul/stage-006/run-001/execution-log.md`, `tests/unit/trackpad_gestures.test.tsx` (2 passed)
+- Browser-specific limitations: Touch-action: none prevents browser gesture hijacking

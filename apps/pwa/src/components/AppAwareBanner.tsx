@@ -1,31 +1,31 @@
 import React, { useState } from 'react';
 import { ForegroundAppState } from '@remote/protocol';
 import { Sparkles, X, ChevronRight } from 'lucide-react';
-import { NavTab } from './NavBar';
+import { NavRoute } from './NavBar';
 
 interface AppAwareBannerProps {
   foregroundApp: ForegroundAppState | null;
-  activeTab: NavTab;
-  onSwitchTab: (tab: NavTab) => void;
+  activeRoute: NavRoute;
+  onSwitchRoute: (route: NavRoute) => void;
 }
 
 export const AppAwareBanner: React.FC<AppAwareBannerProps> = ({
   foregroundApp,
-  activeTab,
-  onSwitchTab,
+  activeRoute,
+  onSwitchRoute,
 }) => {
   const [dismissedApp, setDismissedApp] = useState<string | null>(null);
 
   if (!foregroundApp) return null;
 
   const category = foregroundApp.category;
-  const isMedia = category === 'media' && activeTab !== 'media';
-  const isPresentation = category === 'presentation' && activeTab !== 'presentation';
+  const isMedia = category === 'media' && activeRoute !== 'media';
+  const isPresentation = category === 'presentation' && activeRoute !== 'slides';
 
   if (!isMedia && !isPresentation) return null;
   if (dismissedApp === foregroundApp.processName) return null;
 
-  const targetTab: NavTab = isMedia ? 'media' : 'presentation';
+  const targetRoute: NavRoute = isMedia ? 'media' : 'slides';
   const targetLabel = isMedia ? 'Media Controls' : 'Presentation Remote';
 
   return (
@@ -41,7 +41,7 @@ export const AppAwareBanner: React.FC<AppAwareBannerProps> = ({
 
       <div className="flex items-center gap-1 shrink-0">
         <button
-          onClick={() => onSwitchTab(targetTab)}
+          onClick={() => onSwitchRoute(targetRoute)}
           className="px-2.5 py-1 bg-primary hover:bg-primary-hover active:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition-all active:scale-95"
         >
           <span>{targetLabel}</span>

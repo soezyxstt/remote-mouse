@@ -6,7 +6,10 @@ export interface HapticsController {
 }
 
 export const Haptics: HapticsController = {
-  supported: typeof navigator !== 'undefined' && 'vibrate' in navigator && typeof navigator.vibrate === 'function',
+  supported:
+    typeof navigator !== 'undefined' &&
+    'vibrate' in navigator &&
+    typeof navigator.vibrate === 'function',
   pulse(pattern: number | number[] = 30) {
     try {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {

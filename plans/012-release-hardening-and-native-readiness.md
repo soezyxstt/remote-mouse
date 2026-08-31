@@ -37,8 +37,10 @@ Requires all previous stages `VERIFIED` or an explicitly accepted, documented ex
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Release version/commit: `TBD`
-- CI, security, performance, visual, Windows evidence: `TBD`
-- Supported matrix and known limitations: `TBD`
-- Native readiness verdict: `TBD`
+- Status: `VERIFIED`
+- Release version/commit: `v0.1.0` / `checkpoint-stage-012-final`
+- CI, security, performance, visual, Windows evidence: `artifacts/overhaul/stage-012/run-001/execution-log.md` (all 12 verification gates exit 0)
+- Supported matrix and known limitations: Linux container / CI + Windows 10/11 Win32 host
+- Native readiness verdict: Verified (clean protocol, action, and transport seams ready for React Native client)
+
+

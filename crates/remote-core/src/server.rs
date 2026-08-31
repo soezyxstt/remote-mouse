@@ -97,10 +97,7 @@ async fn server_info_handler(State(state): State<ServerState>) -> impl IntoRespo
     }))
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<ServerState>,
-) -> impl IntoResponse {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<ServerState>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
@@ -137,7 +134,9 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
                 if let Ok(env) = serde_json::from_str::<MessageEnvelope>(&text) {
                     if env.msg_type == "secure.encrypted_frame" {
                         let decrypted_opt = if let Some(ref mut cipher) = session_cipher {
-                            if let Ok(payload) = serde_json::from_value::<EncryptedFramePayload>(env.data.clone()) {
+                            if let Ok(payload) =
+                                serde_json::from_value::<EncryptedFramePayload>(env.data.clone())
+                            {
                                 cipher.decrypt(&payload).ok()
                             } else {
                                 None
@@ -147,11 +146,21 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
                         };
 
                         if let Some(decrypted_bytes) = decrypted_opt {
-                            if let Ok(inner_env) = serde_json::from_slice::<MessageEnvelope>(&decrypted_bytes) {
-                                let response = handle_message(&inner_env, &state, &mut authenticated_device, &mut session_cipher, &conn_id).await;
+                            if let Ok(inner_env) =
+                                serde_json::from_slice::<MessageEnvelope>(&decrypted_bytes)
+                            {
+                                let response = handle_message(
+                                    &inner_env,
+                                    &state,
+                                    &mut authenticated_device,
+                                    &mut session_cipher,
+                                    &conn_id,
+                                )
+                                .await;
                                 if let Some(resp_env) = response {
                                     if let Some(ref mut cipher) = session_cipher {
-                                        let resp_bytes = serde_json::to_vec(&resp_env).unwrap_or_default();
+                                        let resp_bytes =
+                                            serde_json::to_vec(&resp_env).unwrap_or_default();
                                         let encrypted_resp = cipher.encrypt(&resp_bytes);
                                         let outer_env = MessageEnvelope {
                                             v: 1,
@@ -168,7 +177,14 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
                             }
                         }
                     } else {
-                        let response = handle_message(&env, &state, &mut authenticated_device, &mut session_cipher, &conn_id).await;
+                        let response = handle_message(
+                            &env,
+                            &state,
+                            &mut authenticated_device,
+                            &mut session_cipher,
+                            &conn_id,
+                        )
+                        .await;
                         if let Some(resp_env) = response {
                             if let Ok(resp_json) = serde_json::to_string(&resp_env) {
                                 let _ = tx.send(Message::Text(resp_json));
@@ -179,10 +195,27 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
             }
             Message::Binary(bin) => {
                 // High-speed binary pointer delta: [dx: f32 (4 bytes), dy: f32 (4 bytes)]
-                if authenticated_device.is_some() && bin.len() >= 8 {
-                    let dx = f32::from_le_bytes(bin[0..4].try_into().unwrap());
-                    let dy = f32::from_le_bytes(bin[4..8].try_into().unwrap());
-                    let _ = state.input_provider.pointer_move_relative(dx, dy).await;
+                if let Some(ref dev) = authenticated_device {
+                    let live_dev_opt =
+                        { state.device_registry.lock().unwrap().get(&dev.id).cloned() };
+                    let is_allowed = if let Some(live_dev) = live_dev_opt {
+                        !live_dev.is_blocked
+                            && live_dev.capabilities.contains(&Capability::InputMouse)
+                    } else {
+                        !dev.is_blocked && dev.capabilities.contains(&Capability::InputMouse)
+                    };
+
+                    if is_allowed && bin.len() >= 8 {
+                        let dx = f32::from_le_bytes(bin[0..4].try_into().unwrap());
+                        let dy = f32::from_le_bytes(bin[4..8].try_into().unwrap());
+                        if dx.is_finite()
+                            && dy.is_finite()
+                            && dx.abs() <= 10000.0
+                            && dy.abs() <= 10000.0
+                        {
+                            let _ = state.input_provider.pointer_move_relative(dx, dy).await;
+                        }
+                    }
                 }
             }
             Message::Ping(p) => {
@@ -200,11 +233,7 @@ async fn handle_socket(socket: WebSocket, state: ServerState) {
 
     // Clean up connection
     {
-        state
-            .active_connections
-            .lock()
-            .unwrap()
-            .remove(&conn_id);
+        state.active_connections.lock().unwrap().remove(&conn_id);
     }
     let _ = writer_task.await;
 }
@@ -225,10 +254,7 @@ async fn handle_message(
             let token_valid = auth.validate_pairing_token(&req.token);
 
             if token_valid.is_ok() {
-                let is_ephemeral = env
-                    .data
-                    .get("authTier")
-                    .and_then(|v| v.as_str())
+                let is_ephemeral = env.data.get("authTier").and_then(|v| v.as_str())
                     == Some("local_http_ephemeral");
 
                 // If ephemeral fallback, strictly grant Mouse, Media, Presentation only (NO arbitrary raw keyboard or files)
@@ -251,11 +277,7 @@ async fn handle_message(
                     last_seen_at: now,
                     is_blocked: false,
                 };
-                state
-                    .device_registry
-                    .lock()
-                    .unwrap()
-                    .register(dev.clone());
+                state.device_registry.lock().unwrap().register(dev.clone());
                 *auth_device = Some(dev.clone());
 
                 // Derive AES-256 session cipher with directional keys (is_server: true)
@@ -373,9 +395,7 @@ async fn handle_message(
     // 2. Enforce Capability Permissions for Authenticated Sessions
     let current_dev = match auth_device {
         Some(d) => {
-            let live_dev_opt = {
-                state.device_registry.lock().unwrap().get(&d.id).cloned()
-            };
+            let live_dev_opt = { state.device_registry.lock().unwrap().get(&d.id).cloned() };
             if let Some(live_dev) = live_dev_opt {
                 if live_dev.is_blocked {
                     return Some(MessageEnvelope {
@@ -416,6 +436,39 @@ async fn handle_message(
 
     // 3. Dispatch Handlers
     match env.msg_type.as_str() {
+        "action.execute" => {
+            if let Ok(action) =
+                serde_json::from_value::<remote_protocol::actions::Action>(env.data.clone())
+            {
+                let res = crate::dispatcher::ActionDispatcher::dispatch_state(
+                    state,
+                    &env.id,
+                    action,
+                    &current_dev.capabilities,
+                )
+                .await;
+                Some(MessageEnvelope {
+                    v: 1,
+                    id: uuid::Uuid::new_v4().to_string(),
+                    timestamp: now,
+                    msg_type: "action.result".to_string(),
+                    data: serde_json::to_value(&res).unwrap_or_default(),
+                })
+            } else {
+                Some(MessageEnvelope {
+                    v: 1,
+                    id: uuid::Uuid::new_v4().to_string(),
+                    timestamp: now,
+                    msg_type: "action.result".to_string(),
+                    data: json!({
+                        "actionId": env.id,
+                        "status": "error",
+                        "error": "Malformed action envelope"
+                    }),
+                })
+            }
+        }
+
         // Realtime Input
         "input.pointer.delta" => {
             if let Ok(d) = serde_json::from_value::<PointerDeltaData>(env.data.clone()) {
@@ -425,7 +478,10 @@ async fn handle_message(
         }
         "input.pointer.button" => {
             if let Ok(b) = serde_json::from_value::<PointerButtonData>(env.data.clone()) {
-                let _ = state.input_provider.pointer_button(&b.button, &b.state).await;
+                let _ = state
+                    .input_provider
+                    .pointer_button(&b.button, &b.state)
+                    .await;
             }
             None
         }
@@ -548,7 +604,11 @@ async fn handle_message(
             })
         }
         "files.browse" => {
-            let root_id = env.data.get("rootId").and_then(|v| v.as_str()).unwrap_or("");
+            let root_id = env
+                .data
+                .get("rootId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let subpath = env.data.get("subpath").and_then(|v| v.as_str());
             let items = state
                 .file_provider
@@ -564,13 +624,21 @@ async fn handle_message(
             })
         }
         "files.read_file" => {
-            let root_id = env.data.get("rootId").and_then(|v| v.as_str()).unwrap_or("");
-            let subpath = env.data.get("subpath").and_then(|v| v.as_str()).unwrap_or("");
+            let root_id = env
+                .data
+                .get("rootId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let subpath = env
+                .data
+                .get("subpath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             match state.file_provider.read_file(root_id, subpath).await {
                 Ok(bytes) => {
                     use base64::Engine;
                     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                    let filename = subpath.split(['/', '\\']).last().unwrap_or("file");
+                    let filename = subpath.split(['/', '\\']).next_back().unwrap_or("file");
                     Some(MessageEnvelope {
                         v: 1,
                         id: uuid::Uuid::new_v4().to_string(),

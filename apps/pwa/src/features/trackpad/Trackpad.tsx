@@ -22,6 +22,14 @@ export const Trackpad: React.FC = () => {
     },
   });
 
+  React.useEffect(() => {
+    return () => {
+      if (dragLock) {
+        globalRemoteClient.send('input.pointer.button', { button: 'left', state: 'up' });
+      }
+    };
+  }, [dragLock]);
+
   const toggleDragLock = () => {
     const next = !dragLock;
     setDragLock(next);
@@ -53,7 +61,9 @@ export const Trackpad: React.FC = () => {
           <button
             onClick={toggleDragLock}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all ${
-              dragLock ? 'bg-primary text-white font-medium shadow-md shadow-primary/30' : 'bg-surface-elevated text-slate-300'
+              dragLock
+                ? 'bg-primary text-white font-medium shadow-md shadow-primary/30'
+                : 'bg-surface-elevated text-slate-300'
             }`}
           >
             {dragLock ? <Lock size={13} /> : <Unlock size={13} />}
@@ -107,7 +117,9 @@ export const Trackpad: React.FC = () => {
         <div className="text-center text-slate-500/40 pointer-events-none flex flex-col items-center gap-1">
           <Hand size={32} className="opacity-30" />
           <span className="text-xs font-medium tracking-wide">TRACKPAD</span>
-          <span className="text-[10px] opacity-60">1-Finger Move · 1-Tap Click · 2-Finger Scroll</span>
+          <span className="text-[10px] opacity-60">
+            1-Finger Move · 1-Tap Click · 2-Finger Scroll
+          </span>
         </div>
 
         {/* Subtle Edge Scroll Guide */}

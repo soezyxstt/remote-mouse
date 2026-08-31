@@ -14,6 +14,12 @@ impl WindowsPlatform {
     }
 }
 
+impl Default for WindowsPlatform {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(not(windows))]
 mod fallback {
     use super::*;

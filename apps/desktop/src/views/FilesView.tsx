@@ -38,7 +38,8 @@ export const FilesView: React.FC = () => {
         <ShieldCheck size={20} className="text-primary shrink-0" />
         <p className="leading-relaxed">
           The desktop agent enforces strict path traversal sandboxing. Mobile devices only receive
-          synthetic virtual root identifiers and can never navigate outside these configured folders.
+          synthetic virtual root identifiers and can never navigate outside these configured
+          folders.
         </p>
       </div>
 

@@ -56,7 +56,11 @@ pub struct MediaCommandData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PresentationCommandData {
     pub action: String, // "next", "prev", "start", "stop", "black_screen", "goto_slide"
-    #[serde(rename = "slideIndex", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "slideIndex",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub slide_index: Option<u32>,
 }
 
@@ -65,7 +69,11 @@ pub struct WindowActionData {
     #[serde(rename = "windowId")]
     pub window_id: String,
     pub action: String, // "focus", "minimize", "maximize", "restore", "close", "snap_left", "snap_right", "move_to_display"
-    #[serde(rename = "targetDisplay", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "targetDisplay",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub target_display: Option<u32>,
 }
 
@@ -150,7 +158,11 @@ pub struct FileItem {
     pub is_dir: bool,
     #[serde(rename = "sizeBytes", default, skip_serializing_if = "Option::is_none")]
     pub size_bytes: Option<u64>,
-    #[serde(rename = "modifiedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "modifiedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub modified_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extension: Option<String>,

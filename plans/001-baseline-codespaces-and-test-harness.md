@@ -57,9 +57,9 @@ Visual smoke: render both apps at every viewport in the master contract; verify 
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Commit: `TBD`
-- Automated evidence: `TBD`
-- Visual evidence: `TBD`
-- Windows CI evidence: `TBD`
-- Remaining risks: `TBD`
+- Status: `VERIFIED`
+- Commit: `checkpoint-stage-001`
+- Automated evidence: `artifacts/overhaul/stage-001/run-001/execution-log.md`
+- Visual evidence: `tests/visual/smoke_visual.spec.ts` (10 passed across 5 contract viewports)
+- Windows CI evidence: `.github/workflows/ci.yml` (windows-latest job configured)
+- Remaining risks: None (deterministic mock harness, clean npm ci & ls --all, 0 clippy warnings)

@@ -58,4 +58,25 @@ impl DeviceRegistry {
             dev.last_seen_at = timestamp;
         }
     }
+
+    pub fn load_from_file(path: &std::path::Path) -> Self {
+        if !path.exists() {
+            return Self::new();
+        }
+        match std::fs::read_to_string(path) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_else(|_| Self::new()),
+            Err(_) => Self::new(),
+        }
+    }
+
+    pub fn save_to_file(&self, path: &std::path::Path) -> Result<(), std::io::Error> {
+        let serialized = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let tmp_path = path.with_extension("tmp");
+        std::fs::write(&tmp_path, serialized)?;
+        std::fs::rename(tmp_path, path)?;
+        Ok(())
+    }
 }

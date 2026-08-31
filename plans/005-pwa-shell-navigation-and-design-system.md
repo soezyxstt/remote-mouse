@@ -39,7 +39,7 @@ Requires Stages 002 and 003. Before editing, inspect and preserve any user chang
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Commit and evidence: `TBD`
-- Accessibility report: `TBD`
-- Known browser differences: `TBD`
+- Status: `VERIFIED`
+- Commit and evidence: `checkpoint-stage-005` / `artifacts/overhaul/stage-005/run-001/execution-log.md`
+- Accessibility report: Minimum 44px touch targets, role="tab", aria-selected, safe-area insets verified
+- Known browser differences: None (PWA responsive across Safari, Chrome, and desktop viewports)

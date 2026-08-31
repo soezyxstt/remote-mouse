@@ -8,11 +8,7 @@ interface PairingModalProps {
   connectionState: ConnectionState;
 }
 
-export const PairingModal: React.FC<PairingModalProps> = ({
-  isOpen,
-  onClose,
-  connectionState,
-}) => {
+export const PairingModal: React.FC<PairingModalProps> = ({ isOpen, onClose, connectionState }) => {
   const [host, setHost] = useState<string>('');
   const [token, setToken] = useState<string>('');
 

@@ -659,7 +659,9 @@ impl ClipboardProvider for WindowsNativeProvider {
                 return Ok(());
             }
         }
-        Err(PlatformError::ExecutionFailed("Failed to open Windows clipboard".into()))
+        Err(PlatformError::ExecutionFailed(
+            "Failed to open Windows clipboard".into(),
+        ))
     }
 }
 
@@ -715,15 +717,7 @@ impl WindowManager for WindowsNativeProvider {
                             (work.left + half_w, work.top, half_w, work_h)
                         };
 
-                        let _ = SetWindowPos(
-                            hwnd,
-                            HWND_TOP,
-                            x,
-                            y,
-                            w,
-                            h,
-                            SWP_SHOWWINDOW,
-                        );
+                        let _ = SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_SHOWWINDOW);
                     }
                 }
                 _ => {}

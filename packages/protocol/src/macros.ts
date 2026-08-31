@@ -3,7 +3,10 @@ export type ActionIntent =
   | { type: 'keyboard.key'; key: string; modifiers: string[] }
   | { type: 'keyboard.text'; text: string }
   | { type: 'mouse.click'; button: 'left' | 'right' | 'middle' }
-  | { type: 'media.control'; action: 'play_pause' | 'next' | 'prev' | 'volume_up' | 'volume_down' | 'mute' }
+  | {
+      type: 'media.control';
+      action: 'play_pause' | 'next' | 'prev' | 'volume_up' | 'volume_down' | 'mute';
+    }
   | { type: 'presentation.control'; action: 'next' | 'prev' | 'start' | 'stop' | 'black_screen' }
   | { type: 'apps.launch'; appId: string }
   | { type: 'windows.snap'; position: 'left' | 'right' | 'maximize' | 'minimize' | 'next_display' }

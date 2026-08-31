@@ -76,7 +76,9 @@ impl MacroEngine {
                 }
             }
             ActionIntent::KeyboardKey { key, modifiers } => {
-                self.input_provider.key_action(key, "tap", modifiers).await?;
+                self.input_provider
+                    .key_action(key, "tap", modifiers)
+                    .await?;
             }
             ActionIntent::KeyboardText { text } => {
                 self.input_provider.text_stream(text).await?;

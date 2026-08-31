@@ -61,7 +61,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     );
 
     // Seed a pairing token for dev/testing
-    let dev_token = state.auth_manager.lock().unwrap().generate_pairing_token(3600);
+    let dev_token = state
+        .auth_manager
+        .lock()
+        .unwrap()
+        .generate_pairing_token(3600);
     info!("--------------------------------------------------");
     info!("Dev Pairing Token: {}", dev_token);
     info!("Connect via PWA and enter this pairing token or scan QR");

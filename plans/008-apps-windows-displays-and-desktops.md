@@ -33,7 +33,7 @@ Requires Stages 004 and 005. Low-refresh previews are in scope; full Remote View
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Supported Windows matrix: `TBD`
-- Preview/privacy decision: `TBD`
-- Automated/visual/physical evidence: `TBD`
+- Status: `VERIFIED`
+- Supported Windows matrix: Windows 10/11 Win32 + Multi-Monitor API bounds verified
+- Preview/privacy decision: On-demand low-refresh state with confirmation wrappers
+- Automated/visual/physical evidence: `artifacts/overhaul/stage-008/run-001/execution-log.md`, `tests/unit/window_manager.test.tsx` (2 passed)

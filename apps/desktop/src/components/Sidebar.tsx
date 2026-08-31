@@ -9,13 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-export type DesktopNavView =
-  | 'dashboard'
-  | 'devices'
-  | 'builder'
-  | 'presets'
-  | 'files'
-  | 'settings';
+export type DesktopNavView = 'dashboard' | 'devices' | 'builder' | 'presets' | 'files' | 'settings';
 
 interface SidebarProps {
   currentView: DesktopNavView;
@@ -23,11 +17,7 @@ interface SidebarProps {
   serverRunning: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  currentView,
-  onSelectView,
-  serverRunning,
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView, serverRunning }) => {
   const navItems: Array<{ id: DesktopNavView; label: string; icon: React.ReactNode }> = [
     { id: 'dashboard', label: 'Dashboard & Pair', icon: <Laptop size={18} /> },
     { id: 'devices', label: 'Trusted Devices', icon: <Smartphone size={18} /> },

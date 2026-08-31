@@ -19,7 +19,8 @@ export interface ClientIdentity {
 }
 
 export async function resolveClientIdentity(): Promise<ClientIdentity> {
-  const isSecure = typeof window !== 'undefined' && window.isSecureContext === true && !!window.crypto?.subtle;
+  const isSecure =
+    typeof window !== 'undefined' && window.isSecureContext === true && !!window.crypto?.subtle;
 
   let clientId = localStorage.getItem(CLIENT_ID_KEY);
   let clientName = localStorage.getItem(CLIENT_NAME_KEY);
@@ -32,7 +33,7 @@ export async function resolveClientIdentity(): Promise<ClientIdentity> {
   if (!clientName) {
     const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
-    clientName = isIOS ? "User's iPhone" : isAndroid ? "User's Android" : "Mobile Phone";
+    clientName = isIOS ? "User's iPhone" : isAndroid ? "User's Android" : 'Mobile Phone';
     localStorage.setItem(CLIENT_NAME_KEY, clientName);
   }
 

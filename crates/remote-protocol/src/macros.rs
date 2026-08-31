@@ -6,10 +6,7 @@ pub enum ActionIntent {
     #[serde(rename = "keyboard.shortcut")]
     KeyboardShortcut { keys: Vec<String> },
     #[serde(rename = "keyboard.key")]
-    KeyboardKey {
-        key: String,
-        modifiers: Vec<String>,
-    },
+    KeyboardKey { key: String, modifiers: Vec<String> },
     #[serde(rename = "keyboard.text")]
     KeyboardText { text: String },
     #[serde(rename = "mouse.click")]

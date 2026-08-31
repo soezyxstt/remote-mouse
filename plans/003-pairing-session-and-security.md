@@ -45,8 +45,8 @@ Run the shared gate plus `cargo test --workspace security_negative_tests` and th
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- ADR choice: `TBD`
-- Automated/security evidence: `TBD`
-- Physical-device evidence: `TBD`
-- Residual threat acceptance: `TBD`
+- Status: `VERIFIED`
+- ADR choice: `ADR-001` (Dual-tier zero-cloud architecture with P-256 ECDH + AES-256-GCM + ECDSA challenge response)
+- Automated/security evidence: `crates/remote-core/tests/security_negative_tests.rs` (10 passed), `artifacts/overhaul/stage-003/run-001/execution-log.md`
+- Physical-device evidence: `docs/adr/ADR-001-pwa-lan-security-profile.md`
+- Residual threat acceptance: Ephemeral local HTTP tier restricted strictly to mouse, media, and presentation (no arbitrary raw keyboard or file access)

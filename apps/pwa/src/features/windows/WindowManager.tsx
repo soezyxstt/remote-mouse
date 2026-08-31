@@ -150,9 +150,7 @@ export const WindowManager: React.FC = () => {
               <ShieldAlert size={28} />
             </div>
 
-            <h3 className="font-bold text-slate-100 capitalize">
-              Confirm {sensitiveAction}
-            </h3>
+            <h3 className="font-bold text-slate-100 capitalize">Confirm {sensitiveAction}</h3>
             <p className="text-xs text-slate-400">
               Are you sure you want to {sensitiveAction} the connected PC?
             </p>

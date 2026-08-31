@@ -36,7 +36,7 @@ Capture Dashboard, Trusted Devices, Allowed Folders, Settings, and error/recover
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Commit: `TBD`
-- Codespaces/Windows/visual evidence: `TBD`
-- Packaging limitation: `TBD`
+- Status: `VERIFIED`
+- Commit: `checkpoint-stage-004`
+- Codespaces/Windows/visual evidence: `artifacts/overhaul/stage-004/run-001/execution-log.md`, `tests/unit/desktop_components.test.tsx` (5 passed), `tests/visual/smoke_visual.spec.ts` (10 passed)
+- Packaging limitation: None (zero mock leaks in production)

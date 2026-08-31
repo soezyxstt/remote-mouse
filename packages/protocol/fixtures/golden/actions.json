@@ -1,0 +1,58 @@
+{
+  "pointerButton": {
+    "type": "pointer.button",
+    "button": "left",
+    "state": "click"
+  },
+  "pointerScroll": {
+    "type": "pointer.scroll",
+    "dx": 0.0,
+    "dy": -120.0
+  },
+  "keyboardKey": {
+    "type": "keyboard.key",
+    "key": "Enter",
+    "state": "tap",
+    "modifiers": ["ctrl"]
+  },
+  "keyboardText": {
+    "type": "keyboard.text",
+    "text": "Hello, Windows Companion!"
+  },
+  "keyboardShortcut": {
+    "type": "keyboard.shortcut",
+    "keys": ["Control", "Shift", "Escape"]
+  },
+  "mediaCommand": {
+    "type": "media.command",
+    "action": "play_pause",
+    "value": null
+  },
+  "presentationCommand": {
+    "type": "presentation.command",
+    "action": "next",
+    "slideIndex": null
+  },
+  "appsLaunch": {
+    "type": "apps.launch",
+    "appId": "notepad.exe"
+  },
+  "windowsAction": {
+    "type": "windows.action",
+    "windowId": "win-1234",
+    "action": "maximize",
+    "targetDisplay": null
+  },
+  "clipboardSet": {
+    "type": "clipboard.set",
+    "text": "Copied snippet to host"
+  },
+  "powerCommand": {
+    "type": "power.command",
+    "action": "lock"
+  },
+  "macroExecute": {
+    "type": "macro.execute",
+    "macroId": "macro-dev-setup"
+  }
+}

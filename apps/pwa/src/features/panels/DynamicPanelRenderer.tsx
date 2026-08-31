@@ -97,8 +97,8 @@ export const DynamicPanelRenderer: React.FC<DynamicPanelRendererProps> = ({ pane
             isPrimary
               ? 'bg-primary hover:bg-primary-hover active:bg-blue-700 text-white border-primary/50 shadow-primary/20'
               : isSecondary
-              ? 'bg-surface-elevated hover:bg-surface-hover active:bg-slate-700 text-slate-200 border-white/10'
-              : 'bg-surface hover:bg-surface-elevated text-slate-300 border-white/5'
+                ? 'bg-surface-elevated hover:bg-surface-hover active:bg-slate-700 text-slate-200 border-white/10'
+                : 'bg-surface hover:bg-surface-elevated text-slate-300 border-white/5'
           }`}
         >
           <span>{label || 'Action'}</span>
@@ -131,9 +131,7 @@ export const DynamicPanelRenderer: React.FC<DynamicPanelRendererProps> = ({ pane
   };
 
   return (
-    <div
-      className="grid grid-cols-12 gap-2 h-full w-full p-2 auto-rows-[minmax(56px,auto)] overflow-y-auto"
-    >
+    <div className="grid grid-cols-12 gap-2 h-full w-full p-2 auto-rows-[minmax(56px,auto)] overflow-y-auto">
       {panel.components.map((comp) => renderComponent(comp))}
     </div>
   );

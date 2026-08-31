@@ -132,7 +132,10 @@ impl StandardFileProvider {
             });
         }
 
-        info!("StandardFileProvider initialized with {} roots", roots.len());
+        info!(
+            "StandardFileProvider initialized with {} roots",
+            roots.len()
+        );
 
         Self {
             roots: Arc::new(Mutex::new(roots)),
@@ -232,7 +235,9 @@ impl FileProvider for StandardFileProvider {
             };
 
             let item_id = match subpath {
-                Some(sub) if !sub.is_empty() => format!("{}/{}/{}", root_id, sub.trim_matches('/'), file_name),
+                Some(sub) if !sub.is_empty() => {
+                    format!("{}/{}/{}", root_id, sub.trim_matches('/'), file_name)
+                }
                 _ => format!("{}/{}", root_id, file_name),
             };
 

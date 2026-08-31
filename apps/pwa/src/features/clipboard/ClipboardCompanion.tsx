@@ -19,8 +19,8 @@ export const ClipboardCompanion: React.FC = () => {
         const text = (env.data as { text: string }).text;
         setPcClipboard(text);
         setIsRefreshing(false);
-        if (text && !history.includes(text)) {
-          setHistory((prev) => [text, ...prev.slice(0, 19)]);
+        if (text) {
+          setHistory((prev) => (prev.includes(text) ? prev : [text, ...prev.slice(0, 19)]));
         }
       }
     });
@@ -107,7 +107,11 @@ export const ClipboardCompanion: React.FC = () => {
               className="p-2 bg-surface hover:bg-surface-hover text-slate-300 rounded-lg shrink-0 transition-colors"
               title="Copy to mobile device"
             >
-              {copiedIndex === -1 ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+              {copiedIndex === -1 ? (
+                <Check size={14} className="text-emerald-400" />
+              ) : (
+                <Copy size={14} />
+              )}
             </button>
           )}
         </div>
@@ -147,7 +151,11 @@ export const ClipboardCompanion: React.FC = () => {
                     className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
                     title="Copy to phone"
                   >
-                    {copiedIndex === idx ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                    {copiedIndex === idx ? (
+                      <Check size={13} className="text-emerald-400" />
+                    ) : (
+                      <Copy size={13} />
+                    )}
                   </button>
                   <button
                     onClick={() => {

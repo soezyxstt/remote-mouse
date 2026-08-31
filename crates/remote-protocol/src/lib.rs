@@ -1,9 +1,11 @@
+pub mod actions;
 pub mod capabilities;
 pub mod macros;
 pub mod messages;
 pub mod panels;
 pub mod traits;
 
+pub use actions::{Action, ActionResult};
 pub use capabilities::Capability;
 pub use macros::{ActionIntent, MacroCondition, MacroDefinition, MacroStep};
 pub use messages::*;

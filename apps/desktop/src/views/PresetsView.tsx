@@ -45,7 +45,11 @@ export const PresetsView: React.FC = () => {
           {[
             { name: 'General Remote', category: 'general', desc: 'Trackpad + Click buttons' },
             { name: 'Media Companion', category: 'media', desc: 'Playback & Scrub bar' },
-            { name: 'Presentation Remote', category: 'presentation', desc: 'Slide controls & Timer' },
+            {
+              name: 'Presentation Remote',
+              category: 'presentation',
+              desc: 'Slide controls & Timer',
+            },
           ].map((preset, idx) => (
             <div
               key={idx}

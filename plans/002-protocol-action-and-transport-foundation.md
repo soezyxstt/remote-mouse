@@ -65,7 +65,7 @@ cargo test --workspace protocol action_dispatch
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Contract/version decision: `TBD`
-- Commit and evidence: `TBD`
-- Deprecated messages remaining: `TBD`
+- Status: `VERIFIED`
+- Contract/version decision: `packages/protocol` canonical contract with golden JSON fixtures & `ActionDispatcher`
+- Commit and evidence: `checkpoint-stage-002` / `artifacts/overhaul/stage-002/run-001/execution-log.md`
+- Deprecated messages remaining: Version-1 legacy adapters maintained in `server.rs` alongside canonical `action.execute`

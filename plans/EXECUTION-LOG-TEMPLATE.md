@@ -20,17 +20,17 @@ Copy this file to `artifacts/overhaul/stage-NNN/<run-id>/execution-log.md`. Repl
 
 ## Verification
 
-| Gate | Exact command or procedure | Exit/result | Evidence file |
-|---|---|---|---|
-| Format/lint/typecheck | `TBD` | `TBD` | `TBD` |
-| Unit | `TBD` | `TBD` | `TBD` |
-| Integration | `TBD` | `TBD` | `TBD` |
-| Build | `TBD` | `TBD` | `TBD` |
-| E2E | `TBD` | `TBD` | `TBD` |
-| Visual | `TBD` | `TBD` | `TBD` |
-| Rust | `TBD` | `TBD` | `TBD` |
-| Windows CI | `TBD` | `TBD` | `TBD` |
-| Physical Windows/device | `TBD` | `TBD` | `TBD` |
+| Gate                    | Exact command or procedure | Exit/result | Evidence file |
+| ----------------------- | -------------------------- | ----------- | ------------- |
+| Format/lint/typecheck   | `TBD`                      | `TBD`       | `TBD`         |
+| Unit                    | `TBD`                      | `TBD`       | `TBD`         |
+| Integration             | `TBD`                      | `TBD`       | `TBD`         |
+| Build                   | `TBD`                      | `TBD`       | `TBD`         |
+| E2E                     | `TBD`                      | `TBD`       | `TBD`         |
+| Visual                  | `TBD`                      | `TBD`       | `TBD`         |
+| Rust                    | `TBD`                      | `TBD`       | `TBD`         |
+| Windows CI              | `TBD`                      | `TBD`       | `TBD`         |
+| Physical Windows/device | `TBD`                      | `TBD`       | `TBD`         |
 
 ## Visual review
 

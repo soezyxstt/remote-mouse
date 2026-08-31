@@ -33,7 +33,7 @@ Requires Stages 004–006.
 
 ## Completion record
 
-- Status: `NOT_STARTED`
-- Commit and evidence: `TBD`
-- Destructive-action test method: `TBD`
-- Unsupported Windows versions/features: `TBD`
+- Status: `VERIFIED`
+- Commit and evidence: `checkpoint-stage-007` / `artifacts/overhaul/stage-007/run-001/execution-log.md`
+- Destructive-action test method: Dry-run and safety confirmation modal wrappers in place
+- Unsupported Windows versions/features: Win32 fallback handles environments without SMTC

@@ -32,8 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
             isConnected
               ? 'bg-emerald-400 shadow-sm shadow-emerald-400/80 animate-pulse'
               : connectionState === 'connecting'
-              ? 'bg-amber-400 animate-ping'
-              : 'bg-rose-500'
+                ? 'bg-amber-400 animate-ping'
+                : 'bg-rose-500'
           }`}
         />
       </button>

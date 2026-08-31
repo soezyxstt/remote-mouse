@@ -31,7 +31,7 @@ base64 = "0.22"
 sha2 = "0.10"
 aes-gcm = "0.10"
 hkdf = "0.12"
-p256 = { version = "0.13", features = ["ecdh", "pkcs8"] }
+p256 = { version = "0.13", features = ["ecdh", "pkcs8", "ecdsa"] }
 axum = { version = "0.7", features = ["ws"] }
 tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
 remote-protocol = { path = "crates/remote-protocol" }

@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-  ComponentType,
-  PanelComponent,
-} from '@remote/protocol';
-import {
-  Trash2,
-  Save,
-  MousePointer,
-  Square,
-  Music,
-  Grid,
-} from 'lucide-react';
+import { ComponentType, PanelComponent } from '@remote/protocol';
+import { Trash2, Save, MousePointer, Square, Music, Grid } from 'lucide-react';
 
 export const BuilderView: React.FC = () => {
   const [panelName, setPanelName] = useState<string>('Custom Developer Panel');
@@ -50,10 +40,7 @@ export const BuilderView: React.FC = () => {
       label: type === 'trackpad' ? 'Trackpad Area' : 'New Button',
       variant: 'secondary',
       grid: { x: 0, y: components.length * 2, w: 12, h: type === 'trackpad' ? 4 : 2 },
-      action:
-        type === 'button'
-          ? { type: 'keyboard.key', key: 'Space', modifiers: [] }
-          : undefined,
+      action: type === 'button' ? { type: 'keyboard.key', key: 'Space', modifiers: [] } : undefined,
     };
     setComponents([...components, newComp]);
     setSelectedId(newComp.id);
@@ -68,9 +55,7 @@ export const BuilderView: React.FC = () => {
 
   const updateSelectedProps = (updates: Partial<PanelComponent>) => {
     if (selectedId) {
-      setComponents(
-        components.map((c) => (c.id === selectedId ? { ...c, ...updates } : c))
-      );
+      setComponents(components.map((c) => (c.id === selectedId ? { ...c, ...updates } : c)));
     }
   };
 

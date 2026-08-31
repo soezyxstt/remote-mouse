@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { FileItem, VirtualRoot } from '@remote/protocol';
 import { globalRemoteClient } from '../../protocol/client';
-import { Folder, FileText, Download, ChevronRight, HardDrive, ArrowLeft, RefreshCw, Check, Loader2 } from 'lucide-react';
+import {
+  Folder,
+  FileText,
+  Download,
+  ChevronRight,
+  HardDrive,
+  ArrowLeft,
+  RefreshCw,
+  Check,
+  Loader2,
+} from 'lucide-react';
 
 export const FileCompanion: React.FC = () => {
   const [roots, setRoots] = useState<VirtualRoot[]>([]);
@@ -196,7 +206,9 @@ export const FileCompanion: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  onClick={() => (item.isDir ? openFolder(item.name) : handleDownloadFile(item.name))}
+                  onClick={() =>
+                    item.isDir ? openFolder(item.name) : handleDownloadFile(item.name)
+                  }
                   className={`flex items-center justify-between p-3 rounded-xl border border-white/5 transition-all ${
                     item.isDir
                       ? 'bg-surface hover:bg-surface-elevated cursor-pointer active:scale-[0.99]'
@@ -206,7 +218,9 @@ export const FileCompanion: React.FC = () => {
                   <div className="flex items-center gap-3 truncate flex-1">
                     <div
                       className={`p-2 rounded-lg shrink-0 ${
-                        item.isDir ? 'bg-amber-500/20 text-amber-300' : 'bg-blue-500/20 text-blue-300'
+                        item.isDir
+                          ? 'bg-amber-500/20 text-amber-300'
+                          : 'bg-blue-500/20 text-blue-300'
                       }`}
                     >
                       {item.isDir ? <Folder size={16} /> : <FileText size={16} />}
@@ -234,8 +248,8 @@ export const FileCompanion: React.FC = () => {
                         isThisSuccess
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : isThisDownloading
-                          ? 'bg-primary/20 text-primary animate-pulse'
-                          : 'text-slate-400 hover:text-white bg-surface'
+                            ? 'bg-primary/20 text-primary animate-pulse'
+                            : 'text-slate-400 hover:text-white bg-surface'
                       }`}
                       title="Download to device"
                     >

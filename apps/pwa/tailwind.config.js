@@ -18,8 +18,8 @@ export default {
         success: '#10b981',
       },
       touchAction: {
-        'none': 'none',
-        'manipulation': 'manipulation',
+        none: 'none',
+        manipulation: 'manipulation',
       },
     },
   },

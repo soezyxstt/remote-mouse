@@ -28,6 +28,7 @@ pub struct ServerState {
 }
 
 impl ServerState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_providers(
         input_provider: Arc<dyn InputProvider>,
         media_provider: Arc<dyn MediaProvider>,

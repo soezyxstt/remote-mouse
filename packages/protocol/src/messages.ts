@@ -79,7 +79,17 @@ export interface TextStreamData {
 }
 
 export interface MediaCommandData {
-  action: 'play' | 'pause' | 'play_pause' | 'next' | 'prev' | 'volume_up' | 'volume_down' | 'set_volume' | 'mute' | 'seek';
+  action:
+    | 'play'
+    | 'pause'
+    | 'play_pause'
+    | 'next'
+    | 'prev'
+    | 'volume_up'
+    | 'volume_down'
+    | 'set_volume'
+    | 'mute'
+    | 'seek';
   value?: number;
 }
 
@@ -90,7 +100,15 @@ export interface PresentationCommandData {
 
 export interface WindowActionData {
   windowId: string;
-  action: 'focus' | 'minimize' | 'maximize' | 'restore' | 'close' | 'snap_left' | 'snap_right' | 'move_to_display';
+  action:
+    | 'focus'
+    | 'minimize'
+    | 'maximize'
+    | 'restore'
+    | 'close'
+    | 'snap_left'
+    | 'snap_right'
+    | 'move_to_display';
   targetDisplay?: number;
 }
 
@@ -170,7 +188,10 @@ export interface VirtualRoot {
 export function createEnvelope<T>(type: MessageType, data: T): MessageEnvelope<T> {
   return {
     v: 1,
-    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
+    id:
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2, 11),
     timestamp: Date.now(),
     type,
     data,
